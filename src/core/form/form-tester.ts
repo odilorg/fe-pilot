@@ -225,10 +225,39 @@ export class FormTester {
    */
   private async testRequiredValidation(field: any) {
     try {
-      // Focus on field, leave empty, blur
-      await this.page!.focus(field.selector);
-      await this.page!.fill(field.selector, ''); // Ensure empty
-      await this.page!.keyboard.press('Tab'); // Blur to trigger validation
+      // Check if field is disabled
+      const isDisabled = await this.page!.evaluate((selector) => {
+        const el = document.querySelector(selector);
+        return el ? (el as HTMLInputElement | HTMLSelectElement).disabled : false;
+      }, field.selector);
+
+      if (isDisabled) {
+        return { passed: false, message: 'Field is disabled (likely depends on another field)' };
+      }
+
+      // Handle select elements differently
+      if (field.type === 'select-one' || field.type === 'select-multiple') {
+        // For select, try to select empty/first option then blur
+        await this.page!.focus(field.selector);
+
+        // Try to select the first (usually empty/placeholder) option
+        const hasEmptyOption = await this.page!.evaluate((selector) => {
+          const select = document.querySelector(selector) as HTMLSelectElement;
+          if (!select) return false;
+          return select.options.length > 0 && (!select.options[0].value || select.options[0].value === '');
+        }, field.selector);
+
+        if (hasEmptyOption) {
+          await this.page!.selectOption(field.selector, { index: 0 });
+        }
+
+        await this.page!.keyboard.press('Tab'); // Blur to trigger validation
+      } else {
+        // For input/textarea fields
+        await this.page!.focus(field.selector);
+        await this.page!.fill(field.selector, ''); // Ensure empty
+        await this.page!.keyboard.press('Tab'); // Blur to trigger validation
+      }
 
       // Wait a bit for error message
       await this.page!.waitForTimeout(500);
@@ -255,6 +284,21 @@ export class FormTester {
    */
   private async testFormatValidation(field: any) {
     try {
+      // Skip format validation for select elements
+      if (field.type === 'select-one' || field.type === 'select-multiple') {
+        return { passed: true, message: 'Select elements do not have format validation' };
+      }
+
+      // Check if field is disabled
+      const isDisabled = await this.page!.evaluate((selector) => {
+        const el = document.querySelector(selector);
+        return el ? (el as HTMLInputElement).disabled : false;
+      }, field.selector);
+
+      if (isDisabled) {
+        return { passed: true, message: 'Field is disabled, skipping format validation' };
+      }
+
       const invalidData = field.type === 'email' ? 'notanemail' :
                          field.type === 'tel' ? 'abc123' :
                          field.type === 'url' ? 'notaurl' : 'invalid';
@@ -287,23 +331,35 @@ export class FormTester {
   private async testAccessibility(field: any, config: FormTestConfig) {
     const issues: string[] = [];
 
+    // Check 0: Skip detailed checks for disabled fields (but report they're disabled)
+    const isDisabled = await this.page!.evaluate((selector) => {
+      const el = document.querySelector(selector);
+      return el ? (el as HTMLInputElement | HTMLSelectElement).disabled : false;
+    }, field.selector);
+
+    if (isDisabled) {
+      issues.push('Field is disabled (may be accessibility issue if not properly indicated)');
+    }
+
     // Check 1: Has label
     if (!field.label && !field.ariaLabel) {
       issues.push('Missing label or aria-label');
     }
 
-    // Check 2: Keyboard accessible
-    try {
-      await this.page!.focus(field.selector);
-      const focused = await this.page!.evaluate((selector) => {
-        return document.activeElement === document.querySelector(selector);
-      }, field.selector);
+    // Check 2: Keyboard accessible (only if not disabled)
+    if (!isDisabled) {
+      try {
+        await this.page!.focus(field.selector);
+        const focused = await this.page!.evaluate((selector) => {
+          return document.activeElement === document.querySelector(selector);
+        }, field.selector);
 
-      if (!focused) {
-        issues.push('Not keyboard accessible (cannot focus with Tab)');
+        if (!focused) {
+          issues.push('Not keyboard accessible (cannot focus with Tab)');
+        }
+      } catch {
+        issues.push('Cannot focus field');
       }
-    } catch {
-      issues.push('Cannot focus field');
     }
 
     // Check 3: ARIA attributes (if required)

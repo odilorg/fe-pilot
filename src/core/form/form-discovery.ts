@@ -37,10 +37,39 @@ export class FormDiscovery {
           }
           if (!label) label = input.placeholder || input.name || 'Field ' + (fieldIndex + 1);
 
+          // Generate a robust selector
+          let selector = '';
+
+          if (input.id) {
+            // Prefer ID selector (most specific)
+            selector = '#' + input.id;
+          } else if (input.name && input.name.trim() !== '') {
+            // Use name attribute if available and not empty
+            selector = '[name="' + input.name + '"]';
+          } else if (input.placeholder && input.placeholder.trim() !== '') {
+            // Use placeholder as fallback
+            selector = input.tagName.toLowerCase() + '[placeholder="' + input.placeholder + '"]';
+          } else if (input.type) {
+            // Use type + nth-of-type for specific inputs
+            const typeSelector = input.tagName.toLowerCase() + '[type="' + input.type + '"]';
+            const sameTypeInputs = Array.from(form.querySelectorAll(typeSelector));
+            const index = sameTypeInputs.indexOf(input);
+            if (index >= 0) {
+              selector = typeSelector + ':nth-of-type(' + (index + 1) + ')';
+            } else {
+              selector = typeSelector;
+            }
+          } else {
+            // Last resort: use tag name + nth-of-type
+            const tagInputs = Array.from(form.querySelectorAll(input.tagName.toLowerCase()));
+            const index = tagInputs.indexOf(input);
+            selector = input.tagName.toLowerCase() + ':nth-of-type(' + (index + 1) + ')';
+          }
+
           fields.push({
             id: input.id || input.name || 'field-' + formIndex + '-' + fieldIndex,
             type: input.type || input.tagName.toLowerCase(),
-            selector: input.id ? '#' + input.id : '[name="' + input.name + '"]',
+            selector,
             label,
             required: input.required,
             validationRules: input.required ? [{ type: 'required' }] : [],

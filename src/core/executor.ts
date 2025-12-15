@@ -1,6 +1,20 @@
 import { Page, Locator } from 'playwright';
 import { Action, Expectation, WaitForOptions, AssertionType, AssertionResult, FormValidation, WaitCondition } from '../types';
 
+interface FieldInfo {
+  selector: string;
+  name: string;
+  type: string;
+  tagName: string;
+  required: boolean;
+  disabled: boolean;
+  readonly: boolean;
+  hidden: boolean;
+  value: string;
+  placeholder?: string;
+  options?: string[];
+}
+
 export class ActionExecutor {
   private lastUrl: string = '';
   private lastProgressIndicator: string = '';
@@ -9,6 +23,7 @@ export class ActionExecutor {
   private actionRepeatCount: number = 0;
   private readonly MAX_ACTION_REPEATS = 3;
   private readonly DEFAULT_TIMEOUT = 10000;
+  private selectorCache: Map<string, string> = new Map();
 
   constructor(private page: Page) {}
 
@@ -48,36 +63,74 @@ export class ActionExecutor {
 
   private async handleWaitFor(waitFor: WaitForOptions | WaitForOptions[]): Promise<void> {
     const conditions = Array.isArray(waitFor) ? waitFor : [waitFor];
-    for (const condition of conditions) {
-      const timeout = condition.timeout || this.DEFAULT_TIMEOUT;
-      switch (condition.condition) {
-        case 'network_idle':
-          await this.page.waitForLoadState('networkidle', { timeout });
-          break;
-        case 'element_visible':
-          if (condition.selector) await this.page.waitForSelector(condition.selector, { state: 'visible', timeout });
-          break;
-        case 'element_hidden':
-          if (condition.selector) await this.page.waitForSelector(condition.selector, { state: 'hidden', timeout });
-          break;
-        case 'url_contains':
-          if (condition.value) await this.page.waitForURL(`**/*${condition.value}*`, { timeout });
-          break;
-        case 'text_visible':
-          if (condition.value) await this.page.waitForSelector(`text=${condition.value}`, { state: 'visible', timeout });
-          break;
-        case 'no_loading':
-          const loadingSelectors = ['.loading', '.spinner', '[class*="loading"]', '[aria-busy="true"]'];
-          for (const sel of loadingSelectors) {
-            try {
-              if (await this.page.locator(sel).isVisible()) {
-                await this.page.waitForSelector(sel, { state: 'hidden', timeout: 5000 });
-              }
-            } catch {}
-          }
-          break;
-      }
+    // Run independent waits in parallel for speed
+    await Promise.all(conditions.map(condition => this.handleSingleWait(condition)));
+  }
+
+  private async handleSingleWait(condition: WaitForOptions): Promise<void> {
+    const timeout = condition.timeout || this.DEFAULT_TIMEOUT;
+    switch (condition.condition) {
+      case 'network_idle':
+        await this.page.waitForLoadState('networkidle', { timeout });
+        break;
+      case 'element_visible':
+        if (condition.selector) await this.page.waitForSelector(condition.selector, { state: 'visible', timeout });
+        break;
+      case 'element_hidden':
+        if (condition.selector) await this.page.waitForSelector(condition.selector, { state: 'hidden', timeout });
+        break;
+      case 'url_contains':
+        if (condition.value) await this.page.waitForURL(`**/*${condition.value}*`, { timeout });
+        break;
+      case 'text_visible':
+        if (condition.value) await this.page.waitForSelector(`text=${condition.value}`, { state: 'visible', timeout });
+        break;
+      case 'no_loading':
+        await this.waitForNoLoading(timeout);
+        break;
+      case 'form_ready':
+        await this.waitForFormReady(condition.selector || 'form', timeout);
+        break;
     }
+  }
+
+  private async waitForNoLoading(timeout: number = 5000): Promise<void> {
+    const loadingSelectors = [
+      '.loading', '.spinner', '.loader',
+      '[class*="loading"]', '[class*="spinner"]', '[class*="loader"]',
+      '[aria-busy="true"]', '[data-loading="true"]',
+      '.MuiCircularProgress-root', '.ant-spin',
+      '[role="progressbar"]'
+    ];
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      let anyLoading = false;
+      for (const sel of loadingSelectors) {
+        try {
+          if (await this.page.locator(sel).first().isVisible({ timeout: 100 })) {
+            anyLoading = true;
+            break;
+          }
+        } catch {}
+      }
+      if (!anyLoading) return;
+      await this.page.waitForTimeout(100);
+    }
+  }
+
+  private async waitForFormReady(selector: string, timeout: number): Promise<void> {
+    await this.page.waitForSelector(selector, { state: 'visible', timeout });
+    // Wait for form inputs to be interactive
+    await this.page.waitForFunction(
+      (sel) => {
+        const form = document.querySelector(sel);
+        if (!form) return false;
+        const inputs = form.querySelectorAll('input, select, textarea');
+        return inputs.length > 0 && Array.from(inputs).some(i => !(i as HTMLInputElement).disabled);
+      },
+      selector,
+      { timeout }
+    );
   }
 
   private async executeOnce(action: Action): Promise<void> {
@@ -122,53 +175,514 @@ export class ActionExecutor {
       case 'press_key':
         await this.pressKey(action);
         break;
+      // NEW: Universal form actions
+      case 'fill_field':
+        await this.fillField(action);
+        break;
+      case 'auto_fill_form':
+        await this.autoFillForm(action);
+        break;
+      case 'toggle':
+        await this.toggle(action);
+        break;
+      case 'clear':
+        await this.clear(action);
+        break;
+      case 'focus':
+        await this.focus(action);
+        break;
+      case 'blur':
+        await this.blur(action);
+        break;
     }
     if (action.wait_after) {
       await this.page.waitForTimeout(action.wait_after);
     }
   }
 
+  // ==================== UNIVERSAL FORM HANDLING ====================
+
+  /**
+   * Smart field filler - auto-detects field type and fills appropriately
+   */
+  private async fillField(action: Action): Promise<void> {
+    if (!action.selector) throw new Error('fill_field requires selector');
+    if (action.value === undefined && action.option === undefined) {
+      throw new Error('fill_field requires value or option');
+    }
+
+    const element = this.page.locator(action.selector).first();
+    const fieldInfo = await this.getFieldInfo(element);
+
+    // Skip disabled/readonly/hidden fields
+    if (fieldInfo.disabled && !action.force) {
+      console.log(`   ⏭️  Skipping disabled field: ${fieldInfo.name}`);
+      return;
+    }
+    if (fieldInfo.readonly && !action.force) {
+      console.log(`   ⏭️  Skipping readonly field: ${fieldInfo.name}`);
+      return;
+    }
+    if (fieldInfo.hidden && !action.force) {
+      console.log(`   ⏭️  Skipping hidden field: ${fieldInfo.name}`);
+      return;
+    }
+
+    // Auto-detect and fill based on type
+    switch (fieldInfo.type) {
+      case 'text':
+      case 'email':
+      case 'tel':
+      case 'url':
+      case 'search':
+      case 'password':
+      case 'number':
+        await this.smartType(element, action.value!, action.clear !== false);
+        break;
+
+      case 'textarea':
+        await this.smartType(element, action.value!, action.clear !== false);
+        break;
+
+      case 'select':
+      case 'select-one':
+      case 'select-multiple':
+        await this.smartSelect(element, action.value || action.option!, fieldInfo);
+        break;
+
+      case 'checkbox':
+        await this.smartCheckbox(element, action.value === 'true' || action.value === '1' || action.checked === true);
+        break;
+
+      case 'radio':
+        await element.check({ force: action.force });
+        break;
+
+      case 'date':
+      case 'datetime-local':
+      case 'time':
+      case 'month':
+      case 'week':
+        await this.smartDate(element, action.value || action.date!, fieldInfo.type);
+        break;
+
+      case 'file':
+        await element.setInputFiles(action.value!.split(',').map(p => p.trim()));
+        break;
+
+      case 'range':
+        await element.fill(action.value!);
+        break;
+
+      case 'color':
+        await element.fill(action.value!);
+        break;
+
+      default:
+        // For custom components, try multiple strategies
+        await this.smartFillUnknown(element, action, fieldInfo);
+    }
+  }
+
+  private async getFieldInfo(element: Locator): Promise<FieldInfo> {
+    return await element.evaluate((el: any) => {
+      const tagName = el.tagName.toLowerCase();
+      let type = el.type || tagName;
+      if (tagName === 'select') type = 'select';
+      if (tagName === 'textarea') type = 'textarea';
+
+      const options: string[] = [];
+      if (tagName === 'select') {
+        Array.from(el.options || []).forEach((opt: any) => {
+          if (opt.value) options.push(opt.text || opt.value);
+        });
+      }
+
+      return {
+        selector: el.id ? `#${el.id}` : (el.name ? `[name="${el.name}"]` : tagName),
+        name: el.name || el.id || el.placeholder || 'unknown',
+        type,
+        tagName,
+        required: el.required || false,
+        disabled: el.disabled || false,
+        readonly: el.readOnly || false,
+        hidden: el.type === 'hidden' || el.offsetParent === null,
+        value: el.value || '',
+        placeholder: el.placeholder,
+        options,
+      };
+    });
+  }
+
+  private async smartType(element: Locator, value: string, clear: boolean = true): Promise<void> {
+    if (clear) {
+      await element.fill('');
+    }
+    // Use fill for speed, type for realistic behavior
+    await element.fill(value);
+  }
+
+  private async smartSelect(element: Locator, value: string, fieldInfo: FieldInfo): Promise<void> {
+    // Try by label first
+    try {
+      await element.selectOption({ label: value });
+      return;
+    } catch {}
+    // Try by value
+    try {
+      await element.selectOption(value);
+      return;
+    } catch {}
+    // Try partial match
+    const matchingOption = fieldInfo.options?.find(opt =>
+      opt.toLowerCase().includes(value.toLowerCase())
+    );
+    if (matchingOption) {
+      await element.selectOption({ label: matchingOption });
+    }
+  }
+
+  private async smartCheckbox(element: Locator, shouldBeChecked: boolean): Promise<void> {
+    const isChecked = await element.isChecked();
+    if (isChecked !== shouldBeChecked) {
+      await element.click();
+    }
+  }
+
+  private async smartDate(element: Locator, value: string, type: string): Promise<void> {
+    // Normalize date format for different input types
+    let formattedValue = value;
+    if (type === 'date' && !value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Try to parse and format
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        formattedValue = date.toISOString().split('T')[0];
+      }
+    }
+    await element.fill(formattedValue);
+  }
+
+  private async smartFillUnknown(element: Locator, action: Action, fieldInfo: FieldInfo): Promise<void> {
+    // Try click + type for custom components
+    try {
+      await element.click({ timeout: 2000 });
+      await element.fill(action.value!);
+      return;
+    } catch {}
+
+    // Try finding inner input
+    try {
+      const innerInput = element.locator('input, textarea').first();
+      if (await innerInput.isVisible({ timeout: 1000 })) {
+        await innerInput.fill(action.value!);
+        return;
+      }
+    } catch {}
+
+    // Last resort: keyboard input
+    await element.focus();
+    await this.page.keyboard.type(action.value!);
+  }
+
+  /**
+   * Auto-fill entire form with provided data
+   */
+  private async autoFillForm(action: Action): Promise<void> {
+    const formSelector = action.selector || 'form';
+    const data = action.data || {};
+
+    // Get all fillable fields in the form
+    const fields = await this.page.evaluate((sel) => {
+      const form = document.querySelector(sel);
+      if (!form) return [];
+
+      const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea');
+      return Array.from(inputs).map((input: any) => ({
+        selector: input.id ? `#${input.id}` : `[name="${input.name}"]`,
+        name: input.name || input.id,
+        type: input.type || input.tagName.toLowerCase(),
+        required: input.required,
+        disabled: input.disabled,
+        readonly: input.readOnly,
+      })).filter(f => f.name && !f.disabled && !f.readonly);
+    }, formSelector);
+
+    // Fill fields that have matching data
+    for (const field of fields) {
+      const value = data[field.name];
+      if (value !== undefined) {
+        try {
+          await this.fillField({
+            action: 'fill_field',
+            selector: field.selector,
+            value: String(value),
+          });
+        } catch (e) {
+          console.log(`   ⚠️  Could not fill ${field.name}: ${(e as Error).message}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Toggle checkbox/switch/radio
+   */
+  private async toggle(action: Action): Promise<void> {
+    if (!action.selector) throw new Error('toggle requires selector');
+    const element = this.page.locator(action.selector).first();
+
+    // Detect toggle type
+    const tagInfo = await element.evaluate((el: any) => ({
+      tagName: el.tagName.toLowerCase(),
+      type: el.type,
+      role: el.getAttribute('role'),
+      ariaChecked: el.getAttribute('aria-checked'),
+    }));
+
+    if (tagInfo.type === 'checkbox' || tagInfo.type === 'radio') {
+      if (action.value === 'true' || action.checked === true) {
+        await element.check();
+      } else if (action.value === 'false' || action.checked === false) {
+        await element.uncheck();
+      } else {
+        await element.click(); // Toggle
+      }
+    } else if (tagInfo.role === 'switch' || tagInfo.role === 'checkbox') {
+      // Custom switch component
+      await element.click();
+    } else {
+      // Generic toggle
+      await element.click();
+    }
+  }
+
+  private async clear(action: Action): Promise<void> {
+    if (!action.selector) throw new Error('clear requires selector');
+    await this.page.locator(action.selector).fill('');
+  }
+
+  private async focus(action: Action): Promise<void> {
+    if (!action.selector) throw new Error('focus requires selector');
+    await this.page.locator(action.selector).focus();
+  }
+
+  private async blur(action: Action): Promise<void> {
+    if (!action.selector) throw new Error('blur requires selector');
+    await this.page.locator(action.selector).blur();
+  }
+
+  // ==================== ENHANCED EXISTING ACTIONS ====================
+
   private async selectOption(action: Action): Promise<void> {
     const dropdown = action.dropdown || action.selector;
     if (!dropdown) throw new Error('select_option requires dropdown or selector');
-    await this.page.click(dropdown, { timeout: action.timeout || this.DEFAULT_TIMEOUT });
+
+    const element = this.page.locator(dropdown).first();
+
+    // Wait for element to be interactive
+    await element.waitFor({ state: 'visible', timeout: action.timeout || this.DEFAULT_TIMEOUT });
+
+    // Check if disabled
+    const isDisabled = await element.evaluate((el: any) => el.disabled);
+    if (isDisabled && !action.force) {
+      throw new Error(`Dropdown ${dropdown} is disabled`);
+    }
+
+    // Auto-detect element type
+    const tagName = await element.evaluate(el => el.tagName.toLowerCase());
+
+    if (tagName === 'select') {
+      await this.handleNativeSelect(element, action);
+    } else {
+      await this.handleCustomDropdown(element, dropdown, action);
+    }
+  }
+
+  private async handleNativeSelect(element: Locator, action: Action): Promise<void> {
+    if (action.option) {
+      // Try label first, then value
+      try {
+        await element.selectOption({ label: action.option });
+        return;
+      } catch {
+        try {
+          await element.selectOption(action.option);
+          return;
+        } catch {
+          // Try partial match
+          const options = await element.locator('option').all();
+          for (const opt of options) {
+            const text = await opt.textContent();
+            if (text?.toLowerCase().includes(action.option.toLowerCase())) {
+              const value = await opt.getAttribute('value');
+              if (value) {
+                await element.selectOption(value);
+                return;
+              }
+            }
+          }
+        }
+      }
+      throw new Error(`Could not find option "${action.option}" in native select`);
+    } else if (action.option_index !== undefined) {
+      const options = await element.locator('option').all();
+      if (options[action.option_index]) {
+        const value = await options[action.option_index].getAttribute('value');
+        if (value !== null) {
+          await element.selectOption(value);
+          return;
+        }
+      }
+      throw new Error(`Option index ${action.option_index} out of range`);
+    } else if (action.value) {
+      await element.selectOption(action.value);
+    } else {
+      throw new Error('select_option requires option, option_index, or value');
+    }
+  }
+
+  private async handleCustomDropdown(element: Locator, dropdown: string, action: Action): Promise<void> {
+    // Click to open
+    await element.click({ timeout: action.timeout || this.DEFAULT_TIMEOUT });
     await this.page.waitForTimeout(300);
+
+    // Wait for dropdown to appear
+    await this.waitForDropdownOpen();
+
     if (action.option) {
       const optionSelectors = [
         `text="${action.option}"`,
         `[role="option"]:has-text("${action.option}")`,
+        `[role="listbox"] >> text="${action.option}"`,
         `li:has-text("${action.option}")`,
         `[class*="option"]:has-text("${action.option}")`,
+        `[class*="item"]:has-text("${action.option}")`,
+        `[data-value="${action.option}"]`,
+        `.dropdown-item:has-text("${action.option}")`,
+        `.menu-item:has-text("${action.option}")`,
+        // Material UI
+        `.MuiMenuItem-root:has-text("${action.option}")`,
+        // Ant Design
+        `.ant-select-item:has-text("${action.option}")`,
+        // Headless UI
+        `[id*="listbox-option"]:has-text("${action.option}")`,
       ];
+
       for (const optSel of optionSelectors) {
         try {
           const opt = this.page.locator(optSel).first();
-          if (await opt.isVisible({ timeout: 1000 })) {
+          if (await opt.isVisible({ timeout: 500 })) {
             await opt.click({ timeout: 2000 });
             return;
           }
         } catch {}
       }
-      throw new Error(`Could not find option "${action.option}"`);
+
+      // Try keyboard navigation as fallback
+      try {
+        await this.page.keyboard.type(action.option.substring(0, 3));
+        await this.page.waitForTimeout(200);
+        await this.page.keyboard.press('Enter');
+        return;
+      } catch {}
+
+      throw new Error(`Could not find option "${action.option}" in custom dropdown`);
     } else if (action.option_index !== undefined) {
-      const opts = this.page.locator('[role="option"], li, .option');
-      await opts.nth(action.option_index).click();
+      const optionLocators = [
+        '[role="option"]',
+        '[role="listbox"] > *',
+        'li',
+        '.option',
+        '.dropdown-item',
+      ];
+
+      for (const locator of optionLocators) {
+        try {
+          const opts = this.page.locator(locator);
+          const count = await opts.count();
+          if (count > action.option_index) {
+            await opts.nth(action.option_index).click();
+            return;
+          }
+        } catch {}
+      }
+      throw new Error(`Option index ${action.option_index} out of range`);
+    }
+  }
+
+  private async waitForDropdownOpen(timeout: number = 3000): Promise<void> {
+    const dropdownIndicators = [
+      '[role="listbox"]',
+      '[role="menu"]',
+      '.dropdown-menu:visible',
+      '[class*="dropdown"][class*="open"]',
+      '[class*="select"][class*="open"]',
+      '.MuiMenu-paper',
+      '.ant-select-dropdown',
+    ];
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      for (const indicator of dropdownIndicators) {
+        try {
+          if (await this.page.locator(indicator).first().isVisible({ timeout: 100 })) {
+            return;
+          }
+        } catch {}
+      }
+      await this.page.waitForTimeout(100);
     }
   }
 
   private async fillDate(action: Action): Promise<void> {
     if (!action.selector) throw new Error('fill_date requires selector');
     const dateValue = action.date || action.value!;
-    const element = this.page.locator(action.selector);
-    const inputType = await element.getAttribute('type');
-    if (inputType === 'date') {
-      await element.fill(dateValue);
-    } else {
+    const element = this.page.locator(action.selector).first();
+
+    const fieldInfo = await element.evaluate((el: any) => ({
+      type: el.type,
+      tagName: el.tagName.toLowerCase(),
+      hasDatepicker: el.classList.contains('datepicker') ||
+                     el.hasAttribute('data-datepicker') ||
+                     !!el.closest('.react-datepicker-wrapper, .flatpickr-input, [class*="date-picker"]'),
+    }));
+
+    if (fieldInfo.type === 'date') {
+      // Native date input
+      let formattedDate = dateValue;
+      if (!dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          formattedDate = date.toISOString().split('T')[0];
+        }
+      }
+      await element.fill(formattedDate);
+    } else if (fieldInfo.hasDatepicker || action.datepicker) {
+      // Custom datepicker
       await element.click();
       await element.fill('');
-      await element.type(dateValue, { delay: 50 });
-      await element.press('Enter');
-      await this.page.keyboard.press('Escape');
+      await element.type(dateValue, { delay: 30 });
+      await this.page.waitForTimeout(300);
+
+      // Try to close datepicker
+      try {
+        // Press Enter to confirm
+        await element.press('Enter');
+      } catch {}
+      try {
+        // Click outside to close
+        await this.page.keyboard.press('Escape');
+      } catch {}
+      try {
+        // Click a "Done" or "OK" button if exists
+        const doneBtn = this.page.locator('button:has-text("Done"), button:has-text("OK"), button:has-text("Apply")').first();
+        if (await doneBtn.isVisible({ timeout: 500 })) {
+          await doneBtn.click();
+        }
+      } catch {}
+    } else {
+      // Regular text input
+      await element.fill(dateValue);
     }
   }
 
@@ -196,6 +710,24 @@ export class ActionExecutor {
           result.passed = action.expected ? text?.includes(String(action.expected)) ?? false : !!text;
           result.message = result.passed ? 'Text matches' : `Expected "${action.expected}", got "${text}"`;
           break;
+        case 'element_value':
+          const value = await this.page.locator(action.selector!).inputValue({ timeout });
+          result.actual = value;
+          result.passed = action.expected ? value === String(action.expected) : !!value;
+          result.message = result.passed ? 'Value matches' : `Expected "${action.expected}", got "${value}"`;
+          break;
+        case 'element_enabled':
+          result.passed = await this.page.locator(action.selector!).isEnabled({ timeout });
+          result.message = result.passed ? 'Element enabled' : `Element disabled: ${action.selector}`;
+          break;
+        case 'element_disabled':
+          result.passed = await this.page.locator(action.selector!).isDisabled({ timeout });
+          result.message = result.passed ? 'Element disabled' : `Element enabled: ${action.selector}`;
+          break;
+        case 'element_checked':
+          result.passed = await this.page.locator(action.selector!).isChecked({ timeout });
+          result.message = result.passed ? 'Element checked' : `Element unchecked: ${action.selector}`;
+          break;
         case 'url_contains':
           const url = this.page.url();
           result.actual = url;
@@ -207,6 +739,18 @@ export class ActionExecutor {
           result.actual = currentUrl;
           result.passed = currentUrl === action.expected;
           result.message = result.passed ? 'URL matches' : `Expected "${action.expected}", got "${currentUrl}"`;
+          break;
+        case 'url_matches':
+          const urlToMatch = this.page.url();
+          result.actual = urlToMatch;
+          result.passed = action.expected ? new RegExp(String(action.expected)).test(urlToMatch) : true;
+          result.message = result.passed ? 'URL matches pattern' : `URL "${urlToMatch}" doesn't match "${action.expected}"`;
+          break;
+        case 'title_contains':
+          const title = await this.page.title();
+          result.actual = title;
+          result.passed = action.expected ? title.includes(String(action.expected)) : !!title;
+          result.message = result.passed ? 'Title contains expected' : `Title "${title}" missing "${action.expected}"`;
           break;
         case 'no_console_errors':
           result.passed = true;
@@ -222,10 +766,26 @@ export class ActionExecutor {
           result.passed = form.isValid;
           result.message = result.passed ? 'Form valid' : `Form errors: ${form.validationErrors.map(e => e.message).join(', ')}`;
           break;
+        case 'form_complete':
+          const formComplete = await this.checkFormCompleteness(action.selector || 'form');
+          result.passed = formComplete.allFilled;
+          result.message = result.passed ? 'All required fields filled' : `Missing: ${formComplete.emptyRequired.join(', ')}`;
+          break;
         case 'localstorage_has':
-          const hasKey = await this.page.evaluate((key: string) => localStorage.getItem(key) !== null, action.expected);
+          const hasKey = await this.page.evaluate((key: string) => localStorage.getItem(key) !== null, String(action.expected));
           result.passed = hasKey;
           result.message = result.passed ? `Key "${action.expected}" exists` : `Key "${action.expected}" missing`;
+          break;
+        case 'cookie_has':
+          const cookies = await this.page.context().cookies();
+          result.passed = cookies.some(c => c.name === action.expected);
+          result.message = result.passed ? `Cookie "${action.expected}" exists` : `Cookie "${action.expected}" missing`;
+          break;
+        case 'count':
+          const count = await this.page.locator(action.selector!).count();
+          result.actual = String(count);
+          result.passed = count === Number(action.expected);
+          result.message = result.passed ? `Count matches: ${count}` : `Expected ${action.expected} elements, got ${count}`;
           break;
       }
     } catch (error) {
@@ -234,19 +794,50 @@ export class ActionExecutor {
     return result;
   }
 
+  private async checkFormCompleteness(selector: string = 'form'): Promise<{ allFilled: boolean; emptyRequired: string[] }> {
+    return await this.page.evaluate((sel) => {
+      const form = document.querySelector(sel);
+      if (!form) return { allFilled: true, emptyRequired: [] };
+
+      const emptyRequired: string[] = [];
+      form.querySelectorAll('[required]').forEach((input: any) => {
+        if (!input.value || (input.type === 'checkbox' && !input.checked)) {
+          emptyRequired.push(input.name || input.id || 'unknown');
+        }
+      });
+
+      return {
+        allFilled: emptyRequired.length === 0,
+        emptyRequired,
+      };
+    }, selector);
+  }
+
   async detectValidationErrors(): Promise<string[]> {
     return await this.page.evaluate(() => {
       const errors: string[] = [];
+      // Native validation
       document.querySelectorAll(':invalid').forEach((input: any) => {
-        if (input.validationMessage) errors.push(input.validationMessage);
+        if (input.validationMessage && input.type !== 'hidden') {
+          errors.push(input.validationMessage);
+        }
       });
-      const errorSels = ['.error', '.error-message', '[class*="error"]', '.invalid-feedback', '[role="alert"]'];
+      // Custom error elements
+      const errorSels = [
+        '.error', '.error-message', '.field-error',
+        '[class*="error"]:not([class*="no-error"])',
+        '.invalid-feedback', '.form-error',
+        '[role="alert"]', '[aria-invalid="true"]',
+        '.MuiFormHelperText-error', '.ant-form-explain',
+      ];
       errorSels.forEach(sel => {
         document.querySelectorAll(sel).forEach((el: any) => {
-          if (el.textContent && el.offsetParent !== null) errors.push(el.textContent.trim());
+          if (el.textContent && el.offsetParent !== null && el.textContent.trim().length > 0) {
+            errors.push(el.textContent.trim());
+          }
         });
       });
-      return [...new Set(errors)].filter(e => e.length > 0);
+      return [...new Set(errors)].filter(e => e.length > 0 && e.length < 500);
     });
   }
 
@@ -265,12 +856,14 @@ export class ActionExecutor {
       const fields: any[] = [];
       const validationErrors: any[] = [];
       form.querySelectorAll('input, select, textarea').forEach((input: any) => {
+        if (input.type === 'hidden' || input.type === 'submit' || input.type === 'button') return;
         const field = {
           selector: input.id ? `#${input.id}` : `[name="${input.name}"]`,
           name: input.name || input.id,
           type: input.type || input.tagName.toLowerCase(),
           required: input.required,
-          filled: !!input.value,
+          disabled: input.disabled,
+          filled: !!input.value || (input.type === 'checkbox' && input.checked),
           valid: input.checkValidity ? input.checkValidity() : true,
           validationMessage: input.validationMessage,
         };
@@ -305,19 +898,50 @@ export class ActionExecutor {
 
   private async navigate(action: Action): Promise<void> {
     if (!action.url) throw new Error('Navigate requires url');
-    await this.page.goto(action.url, { waitUntil: 'networkidle', timeout: action.timeout || 30000 });
+    await this.page.goto(action.url, {
+      waitUntil: action.wait_until || 'networkidle',
+      timeout: action.timeout || 30000
+    });
   }
 
   private async click(action: Action): Promise<void> {
     if (!action.selector) throw new Error('Click requires selector');
-    await this.page.click(action.selector, { timeout: action.timeout || this.DEFAULT_TIMEOUT });
+    const element = this.page.locator(action.selector).first();
+
+    // Wait for element to be clickable
+    await element.waitFor({ state: 'visible', timeout: action.timeout || this.DEFAULT_TIMEOUT });
+
+    // Check if element is disabled
+    const isDisabled = await element.evaluate((el: any) => el.disabled || el.getAttribute('aria-disabled') === 'true');
+    if (isDisabled && !action.force) {
+      throw new Error(`Element ${action.selector} is disabled`);
+    }
+
+    // Scroll into view if needed
+    await element.scrollIntoViewIfNeeded();
+
+    await element.click({
+      timeout: action.timeout || this.DEFAULT_TIMEOUT,
+      force: action.force,
+    });
   }
 
   private async type(action: Action): Promise<void> {
     if (!action.selector) throw new Error('Type requires selector');
-    if (!action.value) throw new Error('Type requires value');
-    await this.page.fill(action.selector, '');
-    await this.page.type(action.selector, action.value, { delay: 50 });
+    if (action.value === undefined) throw new Error('Type requires value');
+
+    const element = this.page.locator(action.selector).first();
+    await element.waitFor({ state: 'visible', timeout: action.timeout || this.DEFAULT_TIMEOUT });
+
+    if (action.clear !== false) {
+      await element.fill('');
+    }
+
+    if (action.delay) {
+      await element.type(action.value, { delay: action.delay });
+    } else {
+      await element.fill(action.value);
+    }
   }
 
   private async select(action: Action): Promise<void> {
@@ -327,7 +951,8 @@ export class ActionExecutor {
 
   private async upload(action: Action): Promise<void> {
     if (!action.selector || !action.value) throw new Error('Upload requires selector and value');
-    await this.page.locator(action.selector).setInputFiles(action.value.split(',').map(p => p.trim()));
+    const files = action.value.split(',').map(p => p.trim());
+    await this.page.locator(action.selector).setInputFiles(files);
   }
 
   private async wait(action: Action): Promise<void> {
@@ -335,17 +960,21 @@ export class ActionExecutor {
       await this.page.waitForSelector(action.selector, { state: 'visible', timeout: action.timeout || 30000 });
     } else if (action.duration) {
       await this.page.waitForTimeout(action.duration);
+    } else if (action.condition) {
+      await this.handleSingleWait({ condition: action.condition as WaitCondition, timeout: action.timeout });
     }
   }
 
   private async scroll(action: Action): Promise<void> {
     if (action.selector) {
       await this.page.locator(action.selector).scrollIntoViewIfNeeded();
+    } else if (action.direction === 'bottom') {
+      await this.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    } else if (action.direction === 'top') {
+      await this.page.evaluate(() => window.scrollTo(0, 0));
     } else {
-      await this.page.evaluate((amount) => {
-        if (amount > 0) window.scrollBy(0, amount);
-        else window.scrollTo(0, document.body.scrollHeight);
-      }, action.value ? parseInt(action.value) : 0);
+      const amount = action.value ? parseInt(action.value) : 500;
+      await this.page.evaluate((a) => window.scrollBy(0, a), amount);
     }
   }
 
@@ -356,41 +985,47 @@ export class ActionExecutor {
 
   async verifyExpectations(expectations: Expectation[]): Promise<{ passed: boolean; failures: string[] }> {
     const failures: string[] = [];
-    for (const exp of expectations) {
-      try {
-        switch (exp.type) {
-          case 'element_visible':
-            if (exp.selector && !(await this.page.isVisible(exp.selector))) {
-              failures.push(`Element not visible: ${exp.selector}`);
-            }
-            break;
-          case 'element_hidden':
-            if (exp.selector && (await this.page.isVisible(exp.selector))) {
-              failures.push(`Element still visible: ${exp.selector}`);
-            }
-            break;
-          case 'url_changed':
-            if (exp.pattern && !new RegExp(exp.pattern).test(this.page.url())) {
-              failures.push(`URL doesn't match: ${exp.pattern}`);
-            }
-            break;
-          case 'element_text':
-            if (exp.selector) {
-              const text = await this.page.locator(exp.selector).textContent();
-              if (exp.contains && !text?.includes(exp.contains)) {
-                failures.push(`Text doesn't contain "${exp.contains}"`);
+    // Run verifications in parallel for speed
+    const results = await Promise.all(
+      expectations.map(async (exp) => {
+        try {
+          switch (exp.type) {
+            case 'element_visible':
+              if (exp.selector && !(await this.page.isVisible(exp.selector))) {
+                return `Element not visible: ${exp.selector}`;
               }
-            }
-            break;
-          case 'no_validation_errors':
-            const errors = await this.detectValidationErrors();
-            if (errors.length > 0) failures.push(`Validation errors: ${errors.join(', ')}`);
-            break;
+              break;
+            case 'element_hidden':
+              if (exp.selector && (await this.page.isVisible(exp.selector))) {
+                return `Element still visible: ${exp.selector}`;
+              }
+              break;
+            case 'url_changed':
+              if (exp.pattern && !new RegExp(exp.pattern).test(this.page.url())) {
+                return `URL doesn't match: ${exp.pattern}`;
+              }
+              break;
+            case 'element_text':
+              if (exp.selector) {
+                const text = await this.page.locator(exp.selector).textContent();
+                if (exp.contains && !text?.includes(exp.contains)) {
+                  return `Text doesn't contain "${exp.contains}"`;
+                }
+              }
+              break;
+            case 'no_validation_errors':
+              const errors = await this.detectValidationErrors();
+              if (errors.length > 0) return `Validation errors: ${errors.join(', ')}`;
+              break;
+          }
+          return null;
+        } catch (e) {
+          return `Check failed: ${exp.type}`;
         }
-      } catch (e) {
-        failures.push(`Check failed: ${exp.type}`);
-      }
-    }
+      })
+    );
+
+    results.forEach(r => { if (r) failures.push(r); });
     return { passed: failures.length === 0, failures };
   }
 }

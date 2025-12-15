@@ -1,0 +1,109 @@
+name: "Complete Project Creation Test"
+description: "Test full project creation form with all required fields including dropdowns and date picker"
+url: "https://staging.jahongir-app.uz"
+
+config:
+  headless: true
+  timeout: 30000
+  screenshotOnError: true
+  detectValidationErrors: true
+
+steps:
+  # Login flow
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/auth/login"
+    description: "Navigate to login page"
+
+  - action: click
+    selector: "button:has-text('Войти через Email'), button:has-text('Login via Email')"
+    wait_after: 1000
+    description: "Switch to email login"
+
+  - action: type
+    selector: "input[type='email']"
+    value: "developer@tashkent-city.uz"
+    description: "Enter email"
+
+  - action: type
+    selector: "input[type='password']"
+    value: "Developer123"
+    description: "Enter password"
+
+  - action: click
+    selector: "button[type='submit']"
+    wait_after: 5000
+    description: "Submit login"
+
+  # Navigate to project creation
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/developer/projects/new"
+    observe: true
+    wait_after: 2000
+    description: "Go directly to new project form"
+
+  - action: screenshot
+    description: "Capture empty form"
+
+  # Fill project name (Russian)
+  - action: type
+    selector: "input[name='name']"
+    value: "{{faker.company.name()}} Резиденс"
+    description: "Enter project name"
+
+  # Fill address
+  - action: type
+    selector: "input[name='address']"
+    value: "ул. {{faker.location.address()}}, Ташкент"
+    description: "Enter address"
+
+  # Select City dropdown
+  - action: select_option
+    dropdown: "select[name='cityId'], #cityId, [name='cityId']"
+    option: "Ташкент"
+    wait_after: 1000
+    description: "Select city - Tashkent"
+
+  # Select District dropdown (after city is selected)
+  - action: select_option
+    dropdown: "select[name='districtId'], #districtId, [name='districtId']"
+    option_index: 1
+    wait_after: 500
+    description: "Select first available district"
+
+  # Fill total units
+  - action: type
+    selector: "input[name='totalUnits']"
+    value: "{{random.int(50, 500)}}"
+    description: "Enter total units"
+
+  # Fill completion date (1 year from now)
+  - action: fill_date
+    selector: "input[name='completionDate'], input[type='date']"
+    date: "{{faker.date.future(2)}}"
+    description: "Set completion date"
+
+  - action: screenshot
+    observe: true
+    description: "Capture filled form"
+
+  # Check form validity before submit
+  - action: check_form
+    selector: "form"
+    description: "Verify form is valid"
+
+  # Submit form
+  - action: click
+    selector: "button[type='submit']"
+    wait_after: 5000
+    observe: true
+    description: "Submit project form"
+
+  - action: screenshot
+    observe: true
+    description: "Capture result after submission"
+
+  # Assert success - should redirect to projects list or show success
+  - action: assert
+    assert_type: url_contains
+    expected: "/developer/projects"
+    description: "Verify redirected to projects page"

@@ -1,0 +1,105 @@
+name: "Project Creation Test v2"
+description: "Test project creation with native select dropdowns and date input"
+url: "https://staging.jahongir-app.uz"
+
+config:
+  headless: true
+  timeout: 30000
+  screenshotOnError: true
+  detectValidationErrors: true
+  retryFailedSteps: 1
+
+steps:
+  # Login flow
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/auth/login"
+    description: "Navigate to login page"
+
+  - action: click
+    selector: "button:has-text('Войти через Email')"
+    wait_after: 1000
+    description: "Switch to email login"
+
+  - action: type
+    selector: "input[type='email']"
+    value: "developer@tashkent-city.uz"
+    description: "Enter email"
+
+  - action: type
+    selector: "input[type='password']"
+    value: "Developer123"
+    description: "Enter password"
+
+  - action: click
+    selector: "button[type='submit']"
+    wait_after: 5000
+    description: "Submit login"
+
+  # Navigate to project creation
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/developer/projects/new"
+    observe: true
+    wait_after: 2000
+    description: "Go to new project form"
+
+  - action: screenshot
+    description: "Empty form"
+
+  # Fill project name (Russian) - using faker
+  - action: type
+    selector: "input[name='name']"
+    value: "{{faker.company.name()}} Резиденс Тест"
+    description: "Enter project name"
+
+  # Fill address
+  - action: type
+    selector: "input[name='address']"
+    value: "ул. Навои {{random.int(1, 200)}}, Ташкент"
+    description: "Enter address"
+
+  # Select City - use native select action with value
+  - action: select
+    selector: "select[name='cityId']"
+    value: "city-tashkent"
+    wait_after: 500
+    description: "Select Tashkent city"
+
+  # Select District - use native select action with value
+  - action: select
+    selector: "select[name='districtId']"
+    value: "district-yunusabad"
+    wait_after: 500
+    description: "Select Yunusabad district"
+
+  # Fill total units
+  - action: type
+    selector: "input[name='totalUnits']"
+    value: "{{random.int(50, 300)}}"
+    description: "Enter total units"
+
+  # Fill completion date - native date input
+  - action: fill_date
+    selector: "input[name='completionDate']"
+    date: "{{faker.date.future(2)}}"
+    description: "Set completion date"
+
+  - action: screenshot
+    observe: true
+    description: "Filled form before submit"
+
+  # Submit form
+  - action: click
+    selector: "button[type='submit']"
+    wait_after: 5000
+    observe: true
+    description: "Submit project form"
+
+  - action: screenshot
+    observe: true
+    description: "After submission"
+
+  # Assert we're back on projects page
+  - action: assert
+    assert_type: url_contains
+    expected: "/developer/projects"
+    description: "Verify on projects page"

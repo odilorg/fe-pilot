@@ -1,6 +1,6 @@
 {
   "name": "fe-pilot",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI-driven frontend testing and debugging tool with autonomous interaction capabilities - Enhanced with smart waits, assertions, form validation, and test data generation",
   "main": "dist/index.js",
   "bin": {

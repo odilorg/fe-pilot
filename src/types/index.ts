@@ -1,24 +1,31 @@
-// Core action types - ENHANCED with new actions
+// Core action types - v2.1.0: Universal form handling
 export type ActionType =
   | 'navigate'
   | 'click'
   | 'type'
   | 'select'           // Native <select> dropdowns
-  | 'select_option'    // NEW: Custom dropdown (click to open, click option)
-  | 'fill_date'        // NEW: Date picker support
+  | 'select_option'    // Custom dropdown (auto-detects native vs custom)
+  | 'fill_date'        // Date picker support (native + custom)
   | 'upload'
   | 'wait'
-  | 'wait_for'         // NEW: Smart wait strategies
+  | 'wait_for'         // Smart wait strategies
   | 'screenshot'
   | 'scroll'
   | 'hover'
   | 'verify'
-  | 'assert'           // NEW: Assertion steps
-  | 'check_form'       // NEW: Form validation check
-  | 'press_key';       // NEW: Keyboard actions
+  | 'assert'           // Assertion steps
+  | 'check_form'       // Form validation check
+  | 'press_key'        // Keyboard actions
+  // NEW v2.1: Universal form actions
+  | 'fill_field'       // Smart field filler (auto-detects type)
+  | 'auto_fill_form'   // Fill entire form with data object
+  | 'toggle'           // Toggle checkbox/switch/radio
+  | 'clear'            // Clear field value
+  | 'focus'            // Focus element
+  | 'blur';            // Blur element (unfocus)
 
 // Smart wait conditions
-export type WaitCondition = 
+export type WaitCondition =
   | 'network_idle'
   | 'element_visible'
   | 'element_hidden'
@@ -27,15 +34,20 @@ export type WaitCondition =
   | 'url_matches'
   | 'text_visible'
   | 'no_loading'
-  | 'dom_stable';
+  | 'dom_stable'
+  | 'form_ready';      // NEW: Wait for form to be interactive
 
-// Assertion types
+// Assertion types - EXPANDED
 export type AssertionType =
   | 'element_visible'
   | 'element_hidden'
   | 'element_text'
-  | 'element_value'
+  | 'element_value'    // NEW: Check input value
+  | 'element_enabled'  // NEW: Check if enabled
+  | 'element_disabled' // NEW: Check if disabled
+  | 'element_checked'  // NEW: Check if checked
   | 'element_count'
+  | 'count'            // Alias for element_count
   | 'url_is'
   | 'url_contains'
   | 'url_matches'
@@ -44,8 +56,10 @@ export type AssertionType =
   | 'no_console_errors'
   | 'no_validation_errors'
   | 'form_valid'
+  | 'form_complete'    // NEW: All required fields filled
   | 'network_success'
   | 'cookie_exists'
+  | 'cookie_has'       // Alias
   | 'localstorage_has';
 
 export interface Action {
@@ -62,26 +76,36 @@ export interface Action {
     maxAttempts?: number;
     backoff?: number;
   };
-  // NEW: Smart wait options
+  // Smart wait options
   wait_for?: WaitForOptions | WaitForOptions[];
-  // NEW: Dropdown options
+  // Dropdown options
   dropdown?: string;           // For select_option: dropdown trigger selector
-  option?: string;             // For select_option: option to select
+  option?: string;             // For select_option: option to select (text)
   option_index?: number;       // For select_option: select by index
-  // NEW: Date picker options
+  // Date picker options
   date?: string;               // For fill_date: date value (ISO or formatted)
   date_format?: string;        // For fill_date: format string
-  // NEW: Assertion options
+  datepicker?: boolean;        // Force custom datepicker handling
+  // Assertion options
   assert_type?: AssertionType;
   expected?: string | number | boolean;
-  // NEW: Key press options
+  // Key press options
   key?: string;                // For press_key: key to press
   modifiers?: string[];        // For press_key: modifier keys (Ctrl, Shift, Alt)
-  // NEW: Timeout override
+  // Timeout override
   timeout?: number;
+  // NEW v2.1: Universal form options
+  data?: Record<string, any>;  // For auto_fill_form: data to fill
+  checked?: boolean;           // For toggle: target state
+  clear?: boolean;             // For type/fill_field: clear before typing (default: true)
+  delay?: number;              // For type: typing delay in ms
+  force?: boolean;             // Force action on disabled/hidden elements
+  direction?: 'top' | 'bottom';// For scroll: direction
+  wait_until?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit'; // For navigate
+  condition?: WaitCondition;   // For wait: wait condition
 }
 
-// NEW: Smart wait options
+// Smart wait options
 export interface WaitForOptions {
   condition: WaitCondition;
   selector?: string;
@@ -90,8 +114,7 @@ export interface WaitForOptions {
 }
 
 export interface Expectation {
-  type: 'element_visible' | 'no_console_errors' | 'network_success' | 'url_changed' | 'element_text' 
-    // NEW expectation types
+  type: 'element_visible' | 'no_console_errors' | 'network_success' | 'url_changed' | 'element_text'
     | 'no_validation_errors' | 'form_submitted' | 'page_changed' | 'element_hidden';
   selector?: string;
   url?: string;
@@ -106,7 +129,6 @@ export interface ConsoleLog {
   timestamp: number;
   location?: string;
   args?: any[];
-  // NEW: Categorization
   category?: 'critical' | 'warning' | 'info' | 'debug';
   source?: 'javascript' | 'network' | 'security' | 'browser' | 'framework';
 }
@@ -121,13 +143,12 @@ export interface NetworkRequest {
   timestamp: number;
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
-  // NEW: Enhanced info
   requestBody?: string;
   responseBody?: string;
   errorType?: 'timeout' | 'cors' | 'server_error' | 'client_error' | 'network_error';
 }
 
-// NEW: Form validation state
+// Form validation state
 export interface FormValidation {
   isValid: boolean;
   fields: FormFieldState[];
@@ -139,6 +160,7 @@ export interface FormFieldState {
   name?: string;
   type: string;
   required: boolean;
+  disabled?: boolean;  // NEW
   filled: boolean;
   valid: boolean;
   value?: string;
@@ -166,7 +188,6 @@ export interface DOMState {
     keyActions: string[];
     formStatus: string;
   };
-  // NEW: Enhanced DOM info
   dropdowns?: DropdownInfo[];
   datePickers?: DatePickerInfo[];
   forms?: FormInfo[];
@@ -174,24 +195,21 @@ export interface DOMState {
   loadingIndicators?: string[];
 }
 
-// NEW: Dropdown detection
 export interface DropdownInfo {
-  trigger: string;           // Selector for dropdown trigger
+  trigger: string;
   isOpen: boolean;
   options: string[];
   selectedValue?: string;
   type: 'native' | 'custom' | 'autocomplete';
 }
 
-// NEW: Date picker detection  
 export interface DatePickerInfo {
-  input: string;             // Selector for date input
+  input: string;
   type: 'native' | 'custom' | 'calendar';
   currentValue?: string;
   format?: string;
 }
 
-// NEW: Form detection
 export interface FormInfo {
   selector: string;
   fields: number;
@@ -202,7 +220,6 @@ export interface FormInfo {
   submitButton?: string;
 }
 
-// NEW: Modal detection
 export interface ModalInfo {
   selector: string;
   isVisible: boolean;
@@ -228,9 +245,7 @@ export interface Observation {
   domState: DOMState;
   errors: Error[];
   performance?: PerformanceMetrics;
-  // NEW: Form validation state
   formValidation?: FormValidation;
-  // NEW: URL tracking
   urlBefore?: string;
   urlAfter?: string;
   urlChanged?: boolean;
@@ -245,7 +260,6 @@ export interface Scenario {
     username: string;
     password: string;
   };
-  // NEW: Variables for test data
   variables?: Record<string, any>;
   steps: Action[];
   config?: ScenarioConfig;
@@ -259,7 +273,6 @@ export interface ScenarioConfig {
   };
   timeout?: number;
   slowMo?: number;
-  // NEW: Enhanced config options
   screenshotOnError?: boolean;
   screenshotOnStep?: boolean;
   stopOnFirstFailure?: boolean;
@@ -277,13 +290,11 @@ export interface StepResult {
   aiAnalysis?: AIAnalysis;
   duration: number;
   error?: string;
-  // NEW: Enhanced result info
   retryCount?: number;
   assertions?: AssertionResult[];
   formValidation?: FormValidation;
 }
 
-// NEW: Assertion result
 export interface AssertionResult {
   type: AssertionType;
   passed: boolean;
@@ -301,7 +312,6 @@ export interface AIAnalysis {
   fixLocation?: string;
 }
 
-// NEW: Categorized error summary
 export interface ErrorSummary {
   critical: ErrorCategory;
   warning: ErrorCategory;
@@ -340,13 +350,11 @@ export interface TestReport {
     screenshots: string[];
     consoleErrors: number;
     networkErrors: number;
-    // NEW: Enhanced summary
     validationErrors: number;
     assertionsPassed: number;
     assertionsFailed: number;
     retriedSteps: number;
   };
-  // NEW: Categorized errors
   errorSummary?: ErrorSummary;
 }
 

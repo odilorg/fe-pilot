@@ -1,0 +1,72 @@
+name: "Test Improved select_option"
+description: "Test auto-detection of native select vs custom dropdown"
+url: "https://staging.jahongir-app.uz"
+
+steps:
+  # Login
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/auth/login"
+
+  - action: click
+    selector: "button:has-text('Войти через Email')"
+    wait_after: 1000
+
+  - action: type
+    selector: "input[type='email']"
+    value: "developer@tashkent-city.uz"
+
+  - action: type
+    selector: "input[type='password']"
+    value: "Developer123"
+
+  - action: click
+    selector: "button[type='submit']"
+    wait_after: 5000
+
+  # Go to project form
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/developer/projects/new"
+    wait_after: 2000
+
+  # Fill name and address
+  - action: type
+    selector: "input[name='name']"
+    value: "Тест Авто-Детект Селект"
+
+  - action: type
+    selector: "input[name='address']"
+    value: "ул. Тестовая 1"
+
+  # TEST: Use select_option with option text on native select (should auto-detect)
+  - action: select_option
+    selector: "select[name='cityId']"
+    option: "Ташкент"
+    wait_after: 500
+    description: "Test: select_option with option text on native select"
+
+  - action: screenshot
+    observe: true
+    description: "After city selection"
+
+  # TEST: Use select_option with option_index on native select
+  - action: select_option
+    selector: "select[name='districtId']"
+    option_index: 1
+    wait_after: 500
+    description: "Test: select_option with option_index on native select"
+
+  - action: screenshot
+    observe: true
+    description: "After district selection"
+
+  - action: type
+    selector: "input[name='totalUnits']"
+    value: "100"
+
+  - action: fill_date
+    selector: "input[name='completionDate']"
+    date: "2027-06-15"
+
+  - action: screenshot
+    observe: true
+    description: "Final form state"

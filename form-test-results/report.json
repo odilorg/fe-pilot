@@ -1,96 +1,27 @@
 {
   "form": {
     "id": "form-0",
-    "action": "https://staging.jahongir-app.uz/developer/projects/new",
+    "action": "https://staging.jahongir-app.uz/auth/login",
     "method": "get",
     "fields": [
       {
-        "id": "name",
-        "type": "text",
-        "selector": "[name=\"name\"]",
-        "label": "ЖК «Навруз Сити»",
+        "id": "phone",
+        "type": "tel",
+        "selector": "[name=\"phone\"]",
+        "label": "+998 XX XXX XX XX",
         "required": true,
         "validationRules": [
           {
             "type": "required"
           }
         ],
-        "placeholder": "ЖК «Навруз Сити»"
-      },
-      {
-        "id": "nameUz",
-        "type": "text",
-        "selector": "[name=\"nameUz\"]",
-        "label": "«Navro'z City» TJM",
-        "required": false,
-        "validationRules": [],
-        "placeholder": "«Navro'z City» TJM"
-      },
-      {
-        "id": "address",
-        "type": "text",
-        "selector": "[name=\"address\"]",
-        "label": "ул. Амира Темура, 10",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "placeholder": "ул. Амира Темура, 10"
-      },
-      {
-        "id": "cityId",
-        "type": "select-one",
-        "selector": "[name=\"cityId\"]",
-        "label": "cityId",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ]
-      },
-      {
-        "id": "districtId",
-        "type": "select-one",
-        "selector": "[name=\"districtId\"]",
-        "label": "districtId",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ]
-      },
-      {
-        "id": "totalUnits",
-        "type": "number",
-        "selector": "[name=\"totalUnits\"]",
-        "label": "120",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "placeholder": "120"
-      },
-      {
-        "id": "completionDate",
-        "type": "date",
-        "selector": "[name=\"completionDate\"]",
-        "label": "completionDate",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ]
+        "placeholder": "+998 XX XXX XX XX",
+        "ariaLabel": "Номер телефона",
+        "ariaRequired": "true"
       }
     ],
     "submitButton": {
-      "text": "Создать проект",
+      "text": "Продолжить",
       "selector": "button[type=\"submit\"]"
     },
     "isWizard": false
@@ -98,26 +29,31 @@
   "fieldResults": [
     {
       "field": {
-        "id": "name",
-        "type": "text",
-        "selector": "[name=\"name\"]",
-        "label": "ЖК «Навруз Сити»",
+        "id": "phone",
+        "type": "tel",
+        "selector": "[name=\"phone\"]",
+        "label": "+998 XX XXX XX XX",
         "required": true,
         "validationRules": [
           {
             "type": "required"
           }
         ],
-        "placeholder": "ЖК «Навруз Сити»",
+        "placeholder": "+998 XX XXX XX XX",
+        "ariaLabel": "Номер телефона",
+        "ariaRequired": "true",
         "testData": {
           "valid": [
-            "Valid text"
+            "+998901234567",
+            "998901234567"
           ],
           "invalid": [
-            ""
+            "abc",
+            "123"
           ],
           "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            "+1234567890123456789",
+            "0000000000"
           ]
         },
         "accessibility": {}
@@ -127,360 +63,30 @@
           "passed": false,
           "message": "No error shown when required field is empty"
         },
-        "accessibility": {
+        "formatValidation": {
           "passed": false,
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
-      "status": "failed",
-      "issues": [
-        {
-          "severity": "high",
-          "category": "validation",
-          "field": "ЖК «Навруз Сити»",
-          "message": "Required validation failed: No error shown when required field is empty",
-          "recommendation": "Ensure required field shows error when left empty"
+          "message": "No error shown for invalid format"
         },
-        {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "ЖК «Навруз Сити»",
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
-        }
-      ],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "nameUz",
-        "type": "text",
-        "selector": "[name=\"nameUz\"]",
-        "label": "«Navro'z City» TJM",
-        "required": false,
-        "validationRules": [],
-        "placeholder": "«Navro'z City» TJM",
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
         "accessibility": {
           "passed": true,
           "message": "All accessibility checks passed"
         }
       },
-      "status": "passed",
-      "issues": [],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "address",
-        "type": "text",
-        "selector": "[name=\"address\"]",
-        "label": "ул. Амира Темура, 10",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "placeholder": "ул. Амира Темура, 10",
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
-        "requiredValidation": {
-          "passed": false,
-          "message": "No error shown when required field is empty"
-        },
-        "accessibility": {
-          "passed": false,
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
       "status": "failed",
       "issues": [
         {
           "severity": "high",
           "category": "validation",
-          "field": "ул. Амира Темура, 10",
+          "field": "+998 XX XXX XX XX",
           "message": "Required validation failed: No error shown when required field is empty",
           "recommendation": "Ensure required field shows error when left empty"
         },
         {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "ул. Амира Темура, 10",
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
-        }
-      ],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "cityId",
-        "type": "select-one",
-        "selector": "[name=\"cityId\"]",
-        "label": "cityId",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
-        "requiredValidation": {
-          "passed": false,
-          "message": "No error shown when required field is empty"
-        },
-        "accessibility": {
-          "passed": false,
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
-      "status": "failed",
-      "issues": [
-        {
-          "severity": "high",
+          "severity": "medium",
           "category": "validation",
-          "field": "cityId",
-          "message": "Required validation failed: No error shown when required field is empty",
-          "recommendation": "Ensure required field shows error when left empty"
-        },
-        {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "cityId",
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
-        }
-      ],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "districtId",
-        "type": "select-one",
-        "selector": "[name=\"districtId\"]",
-        "label": "districtId",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
-        "requiredValidation": {
-          "passed": false,
-          "message": "Field is disabled (likely depends on another field)"
-        },
-        "accessibility": {
-          "passed": false,
-          "message": "Accessibility issues: Field is disabled (may be accessibility issue if not properly indicated), Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
-      "status": "failed",
-      "issues": [
-        {
-          "severity": "high",
-          "category": "validation",
-          "field": "districtId",
-          "message": "Required validation failed: Field is disabled (likely depends on another field)",
-          "recommendation": "Ensure required field shows error when left empty"
-        },
-        {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "districtId",
-          "message": "Accessibility issues: Field is disabled (may be accessibility issue if not properly indicated), Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
-        }
-      ],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "totalUnits",
-        "type": "number",
-        "selector": "[name=\"totalUnits\"]",
-        "label": "120",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "placeholder": "120",
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
-        "requiredValidation": {
-          "passed": false,
-          "message": "No error shown when required field is empty"
-        },
-        "accessibility": {
-          "passed": false,
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
-      "status": "failed",
-      "issues": [
-        {
-          "severity": "high",
-          "category": "validation",
-          "field": "120",
-          "message": "Required validation failed: No error shown when required field is empty",
-          "recommendation": "Ensure required field shows error when left empty"
-        },
-        {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "120",
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
-        }
-      ],
-      "screenshots": []
-    },
-    {
-      "field": {
-        "id": "completionDate",
-        "type": "date",
-        "selector": "[name=\"completionDate\"]",
-        "label": "completionDate",
-        "required": true,
-        "validationRules": [
-          {
-            "type": "required"
-          }
-        ],
-        "testData": {
-          "valid": [
-            "Valid text"
-          ],
-          "invalid": [
-            ""
-          ],
-          "edge": [
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-          ]
-        },
-        "accessibility": {}
-      },
-      "tests": {
-        "requiredValidation": {
-          "passed": false,
-          "message": "No error shown when required field is empty"
-        },
-        "accessibility": {
-          "passed": false,
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "details": {
-            "wcagCriteria": "1.3.1 Info and Relationships (Level A)",
-            "recommendation": "Add proper labels and ARIA attributes"
-          }
-        }
-      },
-      "status": "failed",
-      "issues": [
-        {
-          "severity": "high",
-          "category": "validation",
-          "field": "completionDate",
-          "message": "Required validation failed: No error shown when required field is empty",
-          "recommendation": "Ensure required field shows error when left empty"
-        },
-        {
-          "severity": "critical",
-          "category": "accessibility",
-          "field": "completionDate",
-          "message": "Accessibility issues: Missing aria-required=\"true\" attribute",
-          "recommendation": "Add proper labels and ARIA attributes",
-          "wcagCriteria": "1.3.1 Info and Relationships (Level A)"
+          "field": "+998 XX XXX XX XX",
+          "message": "Format validation failed: No error shown for invalid format",
+          "recommendation": "Add tel validation to this field"
         }
       ],
       "screenshots": []
@@ -489,15 +95,15 @@
   "obstaclesEncountered": [],
   "aiDecisionsMade": [],
   "summary": {
-    "totalFields": 7,
-    "fieldsPassed": 1,
-    "fieldsFailed": 6,
+    "totalFields": 1,
+    "fieldsPassed": 0,
+    "fieldsFailed": 1,
     "fieldsWarning": 0,
-    "criticalIssues": 12,
-    "warnings": 0,
-    "passRate": 14
+    "criticalIssues": 1,
+    "warnings": 1,
+    "passRate": 0
   },
   "screenshots": [],
-  "duration": 4502,
+  "duration": 2861,
   "aiCost": 0
 }

@@ -75,6 +75,7 @@ export class FormDiscovery {
             validationRules: input.required ? [{ type: 'required' }] : [],
             placeholder: input.placeholder || undefined,
             ariaLabel: input.getAttribute('aria-label') || undefined,
+            ariaRequired: input.getAttribute('aria-required') || undefined,
           });
         });
 

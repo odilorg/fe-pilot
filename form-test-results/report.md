@@ -1,108 +1,35 @@
 # Form Test Report
 
 **Form:** form-0
-**Pass Rate:** 14%
-**Duration:** 4.50s
+**Pass Rate:** 0%
+**Duration:** 2.86s
 **AI Cost:** $0.0000
 
 ## Summary
 
-- ✅ Passed: 1/7
-- ❌ Failed: 6/7
-- ⚠️  Warnings: 0/7
-- 🔴 Critical Issues: 12
-- 🟡 Warnings: 0
+- ✅ Passed: 0/1
+- ❌ Failed: 1/1
+- ⚠️  Warnings: 0/1
+- 🔴 Critical Issues: 1
+- 🟡 Warnings: 1
 
 ## Field Results
 
 
-### 1. ЖК «Навруз Сити» (text)
+### 1. +998 XX XXX XX XX (tel)
 
 **Status:** ❌ Failed
 
 **Issues:**
 - [HIGH] Required validation failed: No error shown when required field is empty
   - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
-
-
-### 2. «Navro'z City» TJM (text)
-
-**Status:** ✅ Passed
-
-
-
-
-### 3. ул. Амира Темура, 10 (text)
-
-**Status:** ❌ Failed
-
-**Issues:**
-- [HIGH] Required validation failed: No error shown when required field is empty
-  - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
-
-
-### 4. cityId (select-one)
-
-**Status:** ❌ Failed
-
-**Issues:**
-- [HIGH] Required validation failed: No error shown when required field is empty
-  - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
-
-
-### 5. districtId (select-one)
-
-**Status:** ❌ Failed
-
-**Issues:**
-- [HIGH] Required validation failed: Field is disabled (likely depends on another field)
-  - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Field is disabled (may be accessibility issue if not properly indicated), Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
-
-
-### 6. 120 (number)
-
-**Status:** ❌ Failed
-
-**Issues:**
-- [HIGH] Required validation failed: No error shown when required field is empty
-  - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
-
-
-### 7. completionDate (date)
-
-**Status:** ❌ Failed
-
-**Issues:**
-- [HIGH] Required validation failed: No error shown when required field is empty
-  - Recommendation: Ensure required field shows error when left empty
-- [CRITICAL] Accessibility issues: Missing aria-required="true" attribute
-  - Recommendation: Add proper labels and ARIA attributes
+- [MEDIUM] Format validation failed: No error shown for invalid format
+  - Recommendation: Add tel validation to this field
 
 
 ## Recommendations
 
 1. **[validation]** Ensure required field shows error when left empty
-2. **[accessibility]** Add proper labels and ARIA attributes
-3. **[validation]** Ensure required field shows error when left empty
-4. **[accessibility]** Add proper labels and ARIA attributes
-5. **[validation]** Ensure required field shows error when left empty
-6. **[accessibility]** Add proper labels and ARIA attributes
-7. **[validation]** Ensure required field shows error when left empty
-8. **[accessibility]** Add proper labels and ARIA attributes
-9. **[validation]** Ensure required field shows error when left empty
-10. **[accessibility]** Add proper labels and ARIA attributes
-11. **[validation]** Ensure required field shows error when left empty
-12. **[accessibility]** Add proper labels and ARIA attributes
 
 ---
 

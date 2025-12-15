@@ -1,0 +1,86 @@
+{
+  "forms": [
+    {
+      "form": {
+        "id": "form-0",
+        "action": "https://staging.jahongir-app.uz/",
+        "method": "get",
+        "fields": [
+          {
+            "id": "field-0-0",
+            "type": "text",
+            "selector": "input[placeholder=\"Адрес, район...\"]",
+            "label": "Адрес, район...",
+            "required": false,
+            "validationRules": [],
+            "placeholder": "Адрес, район..."
+          }
+        ],
+        "submitButton": {
+          "text": "Найти",
+          "selector": "button[type=\"submit\"]"
+        },
+        "isWizard": false
+      },
+      "fieldResults": [
+        {
+          "field": {
+            "id": "field-0-0",
+            "type": "text",
+            "selector": "input[placeholder=\"Адрес, район...\"]",
+            "label": "Адрес, район...",
+            "required": false,
+            "validationRules": [],
+            "placeholder": "Адрес, район...",
+            "testData": {
+              "valid": [
+                "Valid text"
+              ],
+              "invalid": [
+                ""
+              ],
+              "edge": [
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+              ]
+            },
+            "accessibility": {}
+          },
+          "tests": {
+            "accessibility": {
+              "passed": true,
+              "message": "All accessibility checks passed"
+            }
+          },
+          "status": "passed",
+          "issues": [],
+          "screenshots": []
+        }
+      ],
+      "obstaclesEncountered": [],
+      "aiDecisionsMade": [],
+      "summary": {
+        "totalFields": 1,
+        "fieldsPassed": 1,
+        "fieldsFailed": 0,
+        "fieldsWarning": 0,
+        "criticalIssues": 0,
+        "warnings": 0,
+        "passRate": 100
+      },
+      "screenshots": [],
+      "duration": 33,
+      "aiCost": 0
+    }
+  ],
+  "overallSummary": {
+    "totalForms": 1,
+    "formsWithIssues": 0,
+    "totalFields": 1,
+    "fieldsPassed": 1,
+    "totalCriticalIssues": 0,
+    "totalWarnings": 0,
+    "overallPassRate": 100
+  },
+  "duration": 2638,
+  "totalAICost": 0
+}

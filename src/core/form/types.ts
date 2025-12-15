@@ -130,6 +130,21 @@ export interface FormTestResult {
   aiCost: number;
 }
 
+export interface MultiFormTestResult {
+  forms: FormTestResult[];
+  overallSummary: {
+    totalForms: number;
+    formsWithIssues: number;
+    totalFields: number;
+    fieldsPassed: number;
+    totalCriticalIssues: number;
+    totalWarnings: number;
+    overallPassRate: number;
+  };
+  duration: number;
+  totalAICost: number;
+}
+
 export interface FieldTestResult {
   field: FieldAnalysis;
   tests: {

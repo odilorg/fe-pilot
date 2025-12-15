@@ -6,7 +6,7 @@
 import { chromium, Browser, Page } from 'playwright';
 import { FormDiscovery } from './form-discovery';
 import { EdgeCaseHandler } from './edge-case-handler';
-import { FormTestConfig, FormTestResult, FieldTestResult, Issue } from './types';
+import { FormTestConfig, FormTestResult, MultiFormTestResult, FieldTestResult, Issue, DiscoveredForm } from './types';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -84,72 +84,111 @@ export class FormTester {
 
       callbacks?.onProgress?.(`✓ Found ${forms.length} form(s)`);
 
-      // Test the first form (for MVP, can extend to test all forms)
-      const form = forms[0];
-      callbacks?.onProgress?.(`📋 Testing form: ${form.id || 'unnamed'} (${form.fields.length} fields)`);
+      // Test ALL forms on the page
+      const allResults: FormTestResult[] = [];
 
-      // Test each field
-      const fieldResults: FieldTestResult[] = [];
-      const issues: Issue[] = [];
-      const screenshots: string[] = [];
+      for (let formIndex = 0; formIndex < forms.length; formIndex++) {
+        const form = forms[formIndex];
+        callbacks?.onProgress?.(`\n📋 Testing form ${formIndex + 1}/${forms.length}: ${form.id || 'unnamed'} (${form.fields.length} fields)`);
 
-      for (let i = 0; i < form.fields.length; i++) {
-        const field = form.fields[i];
-        callbacks?.onProgress?.(`Testing field ${i + 1}/${form.fields.length}: ${field.label}`);
-
-        const fieldResult = await this.testField(field, fullConfig);
-        fieldResults.push(fieldResult);
-        issues.push(...fieldResult.issues);
-        screenshots.push(...fieldResult.screenshots);
-
-        // Notify callbacks
-        callbacks?.onFieldTested?.(fieldResult);
-
-        // Report issues
-        if (fieldResult.issues.length > 0) {
-          fieldResult.issues.forEach(issue => {
-            callbacks?.onIssueFound?.(issue);
-          });
-        }
-
-        // Log result
-        const statusIcon = fieldResult.status === 'passed' ? '✅' :
-                          fieldResult.status === 'failed' ? '❌' : '⚠️';
-        callbacks?.onProgress?.(`   ${statusIcon} ${fieldResult.status.toUpperCase()}`);
+        const formResult = await this.testSingleForm(form, fullConfig, edgeCaseHandler);
+        allResults.push(formResult);
       }
 
-      // Calculate summary
-      const summary = {
-        totalFields: form.fields.length,
-        fieldsPassed: fieldResults.filter(r => r.status === 'passed').length,
-        fieldsFailed: fieldResults.filter(r => r.status === 'failed').length,
-        fieldsWarning: fieldResults.filter(r => r.status === 'warning').length,
-        criticalIssues: issues.filter(i => i.severity === 'critical' || i.severity === 'high').length,
-        warnings: issues.filter(i => i.severity === 'medium' || i.severity === 'low').length,
-        passRate: 0,
+      // Calculate overall summary
+      const overallSummary = {
+        totalForms: allResults.length,
+        formsWithIssues: allResults.filter(r => r.summary.criticalIssues > 0 || r.summary.warnings > 0).length,
+        totalFields: allResults.reduce((sum, r) => sum + r.summary.totalFields, 0),
+        fieldsPassed: allResults.reduce((sum, r) => sum + r.summary.fieldsPassed, 0),
+        totalCriticalIssues: allResults.reduce((sum, r) => sum + r.summary.criticalIssues, 0),
+        totalWarnings: allResults.reduce((sum, r) => sum + r.summary.warnings, 0),
+        overallPassRate: 0,
       };
-      summary.passRate = Math.round((summary.fieldsPassed / summary.totalFields) * 100);
+      overallSummary.overallPassRate = Math.round((overallSummary.fieldsPassed / overallSummary.totalFields) * 100);
 
-      const result: FormTestResult = {
-        form,
-        fieldResults,
-        obstaclesEncountered: [],
-        aiDecisionsMade: [],
-        summary,
-        screenshots,
+      const multiFormResult: MultiFormTestResult = {
+        forms: allResults,
+        overallSummary,
         duration: Date.now() - startTime,
-        aiCost: edgeCaseHandler.getAIStats().totalAICost,
+        totalAICost: edgeCaseHandler.getAIStats().totalAICost,
       };
 
       // Save results
-      await this.saveResults(result);
+      await this.saveMultiFormResults(multiFormResult);
 
-      return result;
+      // For backward compatibility, return first form result
+      return allResults[0];
     } finally {
       if (this.browser) {
         await this.browser.close();
       }
     }
+  }
+
+  /**
+   * Test a single form
+   */
+  private async testSingleForm(
+    form: DiscoveredForm,
+    config: FormTestConfig,
+    edgeCaseHandler: EdgeCaseHandler
+  ): Promise<FormTestResult> {
+    const startTime = Date.now();
+    const { callbacks } = this.options;
+
+    // Test each field
+    const fieldResults: FieldTestResult[] = [];
+    const issues: Issue[] = [];
+    const screenshots: string[] = [];
+
+    for (let i = 0; i < form.fields.length; i++) {
+      const field = form.fields[i];
+      callbacks?.onProgress?.(`Testing field ${i + 1}/${form.fields.length}: ${field.label}`);
+
+      const fieldResult = await this.testField(field, config);
+      fieldResults.push(fieldResult);
+      issues.push(...fieldResult.issues);
+      screenshots.push(...fieldResult.screenshots);
+
+      // Notify callbacks
+      callbacks?.onFieldTested?.(fieldResult);
+
+      // Report issues
+      if (fieldResult.issues.length > 0) {
+        fieldResult.issues.forEach(issue => {
+          callbacks?.onIssueFound?.(issue);
+        });
+      }
+
+      // Log result
+      const statusIcon = fieldResult.status === 'passed' ? '✅' :
+                        fieldResult.status === 'failed' ? '❌' : '⚠️';
+      callbacks?.onProgress?.(`   ${statusIcon} ${fieldResult.status.toUpperCase()}`);
+    }
+
+    // Calculate summary
+    const summary = {
+      totalFields: form.fields.length,
+      fieldsPassed: fieldResults.filter(r => r.status === 'passed').length,
+      fieldsFailed: fieldResults.filter(r => r.status === 'failed').length,
+      fieldsWarning: fieldResults.filter(r => r.status === 'warning').length,
+      criticalIssues: issues.filter(i => i.severity === 'critical' || i.severity === 'high').length,
+      warnings: issues.filter(i => i.severity === 'medium' || i.severity === 'low').length,
+      passRate: 0,
+    };
+    summary.passRate = Math.round((summary.fieldsPassed / summary.totalFields) * 100);
+
+    return {
+      form,
+      fieldResults,
+      obstaclesEncountered: [],
+      aiDecisionsMade: [],
+      summary,
+      screenshots,
+      duration: Date.now() - startTime,
+      aiCost: edgeCaseHandler.getAIStats().totalAICost,
+    };
   }
 
   /**
@@ -432,6 +471,33 @@ export class FormTester {
   }
 
   /**
+   * Save multi-form test results to files
+   */
+  private async saveMultiFormResults(result: MultiFormTestResult): Promise<void> {
+    // Save JSON (all forms)
+    const jsonPath = path.join(this.outputDir, 'multi-form-report.json');
+    fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
+
+    // Save Markdown summary (all forms)
+    const mdPath = path.join(this.outputDir, 'multi-form-report.md');
+    const markdown = this.generateMultiFormMarkdownReport(result);
+    fs.writeFileSync(mdPath, markdown);
+
+    // Also save individual form reports for backward compatibility
+    result.forms.forEach((formResult, index) => {
+      const formJsonPath = path.join(this.outputDir, `report-form-${index + 1}.json`);
+      const formMdPath = path.join(this.outputDir, `report-form-${index + 1}.md`);
+      fs.writeFileSync(formJsonPath, JSON.stringify(formResult, null, 2));
+      fs.writeFileSync(formMdPath, this.generateMarkdownReport(formResult));
+    });
+
+    console.log(`\n📄 Reports generated:`);
+    console.log(`   Multi-form JSON: ${jsonPath}`);
+    console.log(`   Multi-form Markdown: ${mdPath}`);
+    console.log(`   Individual reports: ${result.forms.length} forms`);
+  }
+
+  /**
    * Generate simple markdown report
    */
   private generateMarkdownReport(result: FormTestResult): string {
@@ -467,6 +533,62 @@ ${result.fieldResults.flatMap(fr => fr.issues).filter(i => i.severity === 'criti
 ---
 
 *Generated by fe-pilot Form Testing*
+`;
+  }
+
+  /**
+   * Generate multi-form markdown report
+   */
+  private generateMultiFormMarkdownReport(result: MultiFormTestResult): string {
+    const { overallSummary } = result;
+
+    return `# Multi-Form Test Report
+
+**Forms Tested:** ${overallSummary.totalForms}
+**Overall Pass Rate:** ${overallSummary.overallPassRate}%
+**Total Duration:** ${(result.duration / 1000).toFixed(2)}s
+**Total AI Cost:** $${result.totalAICost.toFixed(4)}
+
+## Overall Summary
+
+- 📋 Total Forms: ${overallSummary.totalForms}
+- ⚠️  Forms with Issues: ${overallSummary.formsWithIssues}
+- ✅ Forms Clean: ${overallSummary.totalForms - overallSummary.formsWithIssues}
+- 🔢 Total Fields: ${overallSummary.totalFields}
+- ✅ Fields Passed: ${overallSummary.fieldsPassed}
+- 🔴 Critical Issues: ${overallSummary.totalCriticalIssues}
+- 🟡 Warnings: ${overallSummary.totalWarnings}
+
+---
+
+${result.forms.map((formResult, index) => `
+## Form ${index + 1}: ${formResult.form.id || 'Unnamed'}
+
+**Pass Rate:** ${formResult.summary.passRate}%
+**Fields:** ${formResult.summary.totalFields} (${formResult.summary.fieldsPassed} passed, ${formResult.summary.fieldsFailed} failed)
+**Critical Issues:** ${formResult.summary.criticalIssues}
+**Warnings:** ${formResult.summary.warnings}
+
+### Field Results
+
+${formResult.fieldResults.map((fr, i) => `
+**${i + 1}. ${fr.field.label}** (${fr.field.type})
+Status: ${fr.status === 'passed' ? '✅ Passed' : fr.status === 'failed' ? '❌ Failed' : '⚠️ Warning'}
+${fr.issues.length > 0 ? `\nIssues:\n${fr.issues.map(issue => `- [${issue.severity.toUpperCase()}] ${issue.message}`).join('\n')}` : ''}
+`).join('\n')}
+
+---
+`).join('\n')}
+
+## All Critical Issues
+
+${result.forms.flatMap(f => f.fieldResults.flatMap(fr => fr.issues.filter(i => i.severity === 'critical' || i.severity === 'high'))).length > 0 ?
+  result.forms.flatMap((f, fi) => f.fieldResults.flatMap(fr => fr.issues.filter(i => i.severity === 'critical' || i.severity === 'high').map(issue => ({formIndex: fi, formId: f.form.id, field: fr.field.label, issue})))).map((item, i) => `${i + 1}. **Form ${item.formIndex + 1} (${item.formId})** - ${item.field}: ${item.issue.message}\n   - Recommendation: ${item.issue.recommendation}`).join('\n')
+  : 'No critical issues found! 🎉'}
+
+---
+
+*Generated by fe-pilot Form Testing (Multi-Form Mode)*
 `;
   }
 }

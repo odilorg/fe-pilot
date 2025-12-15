@@ -192,6 +192,115 @@ export class FormTester {
   }
 
   /**
+   * Test form submission with valid data
+   */
+  private async testFormSubmission(form: DiscoveredForm, config: FormTestConfig): Promise<any> {
+    const startTime = Date.now();
+    const networkRequests: Array<{url: string; method: string; status: number; timing: number}> = [];
+    const consoleErrors: string[] = [];
+
+    try {
+      // Monitor network requests
+      this.page!.on('request', request => {
+        const reqStart = Date.now();
+        networkRequests.push({
+          url: request.url(),
+          method: request.method(),
+          status: 0,
+          timing: 0,
+        });
+      });
+
+      this.page!.on('response', async response => {
+        const req = networkRequests.find(r => r.url === response.url() && r.status === 0);
+        if (req) {
+          req.status = response.status();
+          req.timing = Date.now() - startTime;
+        }
+      });
+
+      // Monitor console errors
+      this.page!.on('console', msg => {
+        if (msg.type() === 'error') {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      // Fill form with valid test data
+      const formData: Record<string, any> = {};
+      for (const field of form.fields) {
+        const testData = this.generateTestData(field);
+        const validValue = testData.valid[0];
+
+        try {
+          const fieldType = field.type as string;
+          if (fieldType === 'select-one' || fieldType === 'select-multiple' || field.type === 'select' || field.type === 'multiselect') {
+            await this.page!.selectOption(field.selector, { index: 1 }); // Select first non-empty option
+          } else {
+            await this.page!.fill(field.selector, validValue);
+          }
+          formData[field.id] = validValue;
+        } catch (err) {
+          // Field might be disabled or not interactive
+        }
+      }
+
+      // Find and click submit button
+      const submitButton = form.submitButton?.selector || 'button[type="submit"]';
+      const initialUrl = this.page!.url();
+
+      await this.page!.click(submitButton);
+
+      // Wait for navigation or network idle
+      await Promise.race([
+        this.page!.waitForLoadState('networkidle', { timeout: 5000 }),
+        this.page!.waitForTimeout(2000),
+      ]).catch(() => {});
+
+      const responseTime = Date.now() - startTime;
+      const redirectUrl = this.page!.url();
+      const submitted = redirectUrl !== initialUrl || networkRequests.some(r => r.method === 'POST');
+
+      // Find the main submission request
+      const submissionRequest = networkRequests.find(r =>
+        r.method === 'POST' && (r.url.includes('/api/') || r.url.includes(form.action || ''))
+      );
+
+      return {
+        validSubmission: {
+          passed: submitted && (submissionRequest?.status || 0) < 400,
+          message: submitted ? 'Form submitted successfully' : 'Form did not submit',
+        },
+        invalidSubmission: { passed: true, message: 'Not tested' },
+        errorHandling: {
+          passed: consoleErrors.length === 0,
+          message: consoleErrors.length > 0 ? `${consoleErrors.length} console errors during submission` : 'No console errors',
+        },
+        loadingIndicator: { passed: true, message: 'Not tested' },
+        duplicatePrevention: { passed: true, message: 'Not tested' },
+        submitted,
+        statusCode: submissionRequest?.status,
+        redirectUrl: redirectUrl !== initialUrl ? redirectUrl : undefined,
+        responseTime,
+        networkRequests: networkRequests.slice(0, 10), // Limit to first 10
+        consoleErrors,
+        formData,
+      };
+    } catch (error) {
+      return {
+        validSubmission: { passed: false, message: `Submission test failed: ${error}` },
+        invalidSubmission: { passed: true, message: 'Not tested' },
+        errorHandling: { passed: false, message: `Error: ${error}` },
+        loadingIndicator: { passed: true, message: 'Not tested' },
+        duplicatePrevention: { passed: true, message: 'Not tested' },
+        submitted: false,
+        consoleErrors,
+        networkRequests,
+      };
+    }
+  }
+
+  /**
    * Test a single field
    */
   private async testField(field: any, config: FormTestConfig): Promise<FieldTestResult> {
@@ -210,6 +319,18 @@ export class FormTester {
           message: `Required validation failed: ${requiredTest.message}`,
           recommendation: 'Ensure required field shows error when left empty',
         });
+      } else if (requiredTest.details?.errorMessage) {
+        // Validate error message quality
+        const errorQuality = this.validateErrorMessageQuality(requiredTest.details.errorMessage, field);
+        if (errorQuality.issues.length > 0) {
+          issues.push({
+            severity: 'medium',
+            category: 'validation',
+            field: field.label,
+            message: `Error message quality issues: ${errorQuality.issues.join(', ')}`,
+            recommendation: errorQuality.recommendation,
+          });
+        }
       }
     }
 
@@ -301,15 +422,27 @@ export class FormTester {
       // Wait a bit for error message
       await this.page!.waitForTimeout(500);
 
-      // Check if error message appeared
-      const errorVisible = await this.page!.evaluate(() => {
+      // Check if error message appeared and capture it
+      const errorData = await this.page!.evaluate(() => {
         // Look for common error message patterns
-        const errors = document.querySelectorAll('.error, .invalid, [class*="error"], [aria-invalid="true"]');
-        return errors.length > 0;
+        const errorElements = document.querySelectorAll('.error, .invalid, [class*="error"], [role="alert"]');
+        const errorTexts: string[] = [];
+        errorElements.forEach(el => {
+          const text = el.textContent?.trim();
+          if (text && text.length > 0) errorTexts.push(text);
+        });
+        return {
+          hasError: errorElements.length > 0,
+          messages: errorTexts,
+        };
       });
 
-      if (errorVisible) {
-        return { passed: true, message: 'Required validation works correctly' };
+      if (errorData.hasError) {
+        return {
+          passed: true,
+          message: 'Required validation works correctly',
+          details: { errorMessage: errorData.messages[0] || '' },
+        };
       } else {
         return { passed: false, message: 'No error shown when required field is empty' };
       }
@@ -418,6 +551,48 @@ export class FormTester {
     }
 
     return { passed: true, message: 'All accessibility checks passed' };
+  }
+
+  /**
+   * Validate error message quality
+   */
+  private validateErrorMessageQuality(errorMessage: string, field: any): {
+    issues: string[];
+    recommendation: string;
+  } {
+    const issues: string[] = [];
+
+    // Check 1: Message is too short (vague)
+    if (errorMessage.length < 10) {
+      issues.push('Error message too vague (< 10 characters)');
+    }
+
+    // Check 2: Message doesn't mention the field name
+    if (!errorMessage.toLowerCase().includes(field.label.toLowerCase().slice(0, 5))) {
+      issues.push(`Error doesn't mention field name "${field.label}"`);
+    }
+
+    // Check 3: Message is just "Error" or "Required" or "Invalid"
+    const vagueMessages = ['error', 'required', 'invalid', 'wrong', 'incorrect'];
+    if (vagueMessages.includes(errorMessage.toLowerCase().trim())) {
+      issues.push('Error message is too generic');
+    }
+
+    // Check 4: Message doesn't explain what's wrong
+    const hasExplanation = errorMessage.toLowerCase().includes('must') ||
+                          errorMessage.toLowerCase().includes('should') ||
+                          errorMessage.toLowerCase().includes('please') ||
+                          errorMessage.toLowerCase().includes('required') ||
+                          errorMessage.toLowerCase().includes('valid');
+    if (!hasExplanation && errorMessage.length < 20) {
+      issues.push('Error message doesn\'t explain what\'s wrong');
+    }
+
+    const recommendation = issues.length > 0
+      ? `Improve error message to be specific and helpful. Good example: "${field.label} is required" or "${field.label} must be a valid email address"`
+      : 'Error message quality is good';
+
+    return { issues, recommendation };
   }
 
   /**

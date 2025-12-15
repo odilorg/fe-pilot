@@ -170,6 +170,19 @@ export interface SubmissionTestResult {
   errorHandling: TestResult;
   loadingIndicator: TestResult;
   duplicatePrevention: TestResult;
+  // Network details
+  submitted: boolean;
+  statusCode?: number;
+  redirectUrl?: string;
+  responseTime?: number;
+  networkRequests?: Array<{
+    url: string;
+    method: string;
+    status: number;
+    timing: number;
+  }>;
+  consoleErrors?: string[];
+  formData?: Record<string, any>;
 }
 
 export interface Issue {

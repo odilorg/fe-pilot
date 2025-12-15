@@ -129,32 +129,61 @@ export class ClaudeCodeFormAPI {
   }
 
   /**
-   * Generate a fix suggestion for a specific issue
+   * Generate a fix suggestion for a specific issue using Grep to find exact location
    */
   private async generateFixForIssue(
     issue: Issue,
     sourceFiles: { path: string; content: string }[]
   ): Promise<AutoFixSuggestion | null> {
+    const fieldName = issue.field || '';
+    if (!fieldName) return null;
+
     // Example: Missing aria-label
     if (issue.message.includes('Missing aria-label')) {
-      const fieldName = issue.field || '';
-
-      // Find the file containing this field
-      // (In real usage, Claude Code would use Grep tool to find it)
+      // Find the file containing this field using pattern matching
       for (const file of sourceFiles) {
-        if (file.content.includes(fieldName)) {
-          // Generate fix
-          const oldCode = `<input id="${fieldName}"`;
-          const newCode = `<input id="${fieldName}" aria-label="${fieldName}"`;
+        // Search for the input element with this field's placeholder/name/id
+        const patterns = [
+          `placeholder="${fieldName}"`,
+          `placeholder="{${fieldName}}"`,
+          `id="${fieldName.toLowerCase()}"`,
+          `name="${fieldName.toLowerCase()}"`,
+          fieldName,
+        ];
 
-          return {
-            issue,
-            fileToEdit: file.path,
-            oldCode,
-            newCode,
-            explanation: `Add aria-label="${fieldName}" to make field accessible to screen readers (WCAG 2.1 Level A compliance)`,
-            confidence: 0.95,
-          };
+        let matchedPattern: string | null = null;
+        let lineNumber = 0;
+
+        for (const pattern of patterns) {
+          const lines = file.content.split('\n');
+          const foundLine = lines.findIndex(line => line.includes(pattern));
+          if (foundLine >= 0) {
+            matchedPattern = pattern;
+            lineNumber = foundLine + 1;
+            break;
+          }
+        }
+
+        if (matchedPattern) {
+          // Extract the actual line of code
+          const lines = file.content.split('\n');
+          const oldCode = lines[lineNumber - 1].trim();
+
+          // Generate fix by adding aria-label
+          const newCode = oldCode.includes('aria-label')
+            ? oldCode  // Already has aria-label
+            : oldCode.replace(/(<input[^>]*)(\/?>)/, `$1 aria-label="${fieldName}"$2`);
+
+          if (oldCode !== newCode) {
+            return {
+              issue,
+              fileToEdit: file.path,
+              oldCode,
+              newCode,
+              explanation: `Add aria-label="${fieldName}" at ${file.path}:${lineNumber} for screen reader accessibility (WCAG 2.1 Level A)`,
+              confidence: 0.95,
+            };
+          }
         }
       }
     }

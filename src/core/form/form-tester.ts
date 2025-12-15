@@ -1,0 +1,416 @@
+/**
+ * Form Tester - Main Orchestrator
+ * Coordinates form discovery, testing, and reporting
+ */
+
+import { chromium, Browser, Page } from 'playwright';
+import { FormDiscovery } from './form-discovery';
+import { EdgeCaseHandler } from './edge-case-handler';
+import { FormTestConfig, FormTestResult, FieldTestResult, Issue } from './types';
+import * as path from 'path';
+import * as fs from 'fs';
+
+export interface StreamingCallbacks {
+  onProgress?: (message: string) => void;
+  onFieldTested?: (result: FieldTestResult) => void;
+  onIssueFound?: (issue: Issue) => void;
+}
+
+export interface FormTesterOptions {
+  headless?: boolean;
+  outputDir?: string;
+  aiMode?: 'disabled' | 'fallback' | 'hybrid' | 'always';
+  callbacks?: StreamingCallbacks;
+}
+
+export class FormTester {
+  private browser: Browser | null = null;
+  private page: Page | null = null;
+  private outputDir: string;
+
+  constructor(private options: FormTesterOptions = {}) {
+    this.outputDir = options.outputDir || path.join(process.cwd(), 'form-test-results');
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Main entry: Test a form at given URL
+   */
+  async testForm(url: string, config: Partial<FormTestConfig> = {}): Promise<FormTestResult> {
+    const startTime = Date.now();
+
+    // Merge config with defaults
+    const fullConfig: FormTestConfig = {
+      mode: config.mode || 'standard',
+      aiMode: this.options.aiMode || config.aiMode || 'hybrid',
+      wcagLevel: config.wcagLevel || 'AA',
+      maxAICost: config.maxAICost || 0.50,
+      credentials: config.credentials,
+    };
+
+    const { callbacks } = this.options;
+
+    callbacks?.onProgress?.(`🚀 Starting form test: ${url}`);
+    callbacks?.onProgress?.(`📊 Mode: ${fullConfig.mode}`);
+    callbacks?.onProgress?.(`🧠 AI Mode: ${fullConfig.aiMode}`);
+
+    try {
+      // Launch browser
+      this.browser = await chromium.launch({ headless: this.options.headless !== false });
+      this.page = await this.browser.newPage();
+
+      // Navigate to URL
+      callbacks?.onProgress?.(`🌐 Navigating to ${url}...`);
+      await this.page.goto(url, { waitUntil: 'networkidle' });
+
+      // Handle edge cases (popups, modals, etc.)
+      const edgeCaseHandler = new EdgeCaseHandler(this.page, fullConfig);
+      const obstaclesCleared = await edgeCaseHandler.handleObstacles();
+
+      if (!obstaclesCleared) {
+        throw new Error('Could not clear obstacles blocking form access');
+      }
+
+      // Discover forms
+      callbacks?.onProgress?.(`🔍 Discovering forms...`);
+      const discovery = new FormDiscovery(this.page);
+      const forms = await discovery.detectForms();
+
+      if (forms.length === 0) {
+        throw new Error('No forms found on page');
+      }
+
+      callbacks?.onProgress?.(`✓ Found ${forms.length} form(s)`);
+
+      // Test the first form (for MVP, can extend to test all forms)
+      const form = forms[0];
+      callbacks?.onProgress?.(`📋 Testing form: ${form.id || 'unnamed'} (${form.fields.length} fields)`);
+
+      // Test each field
+      const fieldResults: FieldTestResult[] = [];
+      const issues: Issue[] = [];
+      const screenshots: string[] = [];
+
+      for (let i = 0; i < form.fields.length; i++) {
+        const field = form.fields[i];
+        callbacks?.onProgress?.(`Testing field ${i + 1}/${form.fields.length}: ${field.label}`);
+
+        const fieldResult = await this.testField(field, fullConfig);
+        fieldResults.push(fieldResult);
+        issues.push(...fieldResult.issues);
+        screenshots.push(...fieldResult.screenshots);
+
+        // Notify callbacks
+        callbacks?.onFieldTested?.(fieldResult);
+
+        // Report issues
+        if (fieldResult.issues.length > 0) {
+          fieldResult.issues.forEach(issue => {
+            callbacks?.onIssueFound?.(issue);
+          });
+        }
+
+        // Log result
+        const statusIcon = fieldResult.status === 'passed' ? '✅' :
+                          fieldResult.status === 'failed' ? '❌' : '⚠️';
+        callbacks?.onProgress?.(`   ${statusIcon} ${fieldResult.status.toUpperCase()}`);
+      }
+
+      // Calculate summary
+      const summary = {
+        totalFields: form.fields.length,
+        fieldsPassed: fieldResults.filter(r => r.status === 'passed').length,
+        fieldsFailed: fieldResults.filter(r => r.status === 'failed').length,
+        fieldsWarning: fieldResults.filter(r => r.status === 'warning').length,
+        criticalIssues: issues.filter(i => i.severity === 'critical' || i.severity === 'high').length,
+        warnings: issues.filter(i => i.severity === 'medium' || i.severity === 'low').length,
+        passRate: 0,
+      };
+      summary.passRate = Math.round((summary.fieldsPassed / summary.totalFields) * 100);
+
+      const result: FormTestResult = {
+        form,
+        fieldResults,
+        obstaclesEncountered: [],
+        aiDecisionsMade: [],
+        summary,
+        screenshots,
+        duration: Date.now() - startTime,
+        aiCost: edgeCaseHandler.getAIStats().totalAICost,
+      };
+
+      // Save results
+      await this.saveResults(result);
+
+      return result;
+    } finally {
+      if (this.browser) {
+        await this.browser.close();
+      }
+    }
+  }
+
+  /**
+   * Test a single field
+   */
+  private async testField(field: any, config: FormTestConfig): Promise<FieldTestResult> {
+    const issues: Issue[] = [];
+    const screenshots: string[] = [];
+
+    // Test 1: Required validation (if field is required)
+    let requiredTest;
+    if (field.required) {
+      requiredTest = await this.testRequiredValidation(field);
+      if (!requiredTest.passed) {
+        issues.push({
+          severity: 'high',
+          category: 'validation',
+          field: field.label,
+          message: `Required validation failed: ${requiredTest.message}`,
+          recommendation: 'Ensure required field shows error when left empty',
+        });
+      }
+    }
+
+    // Test 2: Format validation (for email, tel, etc.)
+    let formatTest;
+    if (field.type === 'email' || field.type === 'tel' || field.type === 'url') {
+      formatTest = await this.testFormatValidation(field);
+      if (!formatTest.passed) {
+        issues.push({
+          severity: 'medium',
+          category: 'validation',
+          field: field.label,
+          message: `Format validation failed: ${formatTest.message}`,
+          recommendation: `Add ${field.type} validation to this field`,
+        });
+      }
+    }
+
+    // Test 3: Accessibility
+    const accessibilityTest = await this.testAccessibility(field, config);
+    if (!accessibilityTest.passed) {
+      issues.push({
+        severity: 'critical',
+        category: 'accessibility',
+        field: field.label,
+        message: accessibilityTest.message,
+        recommendation: accessibilityTest.details?.recommendation || 'Fix accessibility issues',
+        wcagCriteria: accessibilityTest.details?.wcagCriteria,
+      });
+    }
+
+    // Determine overall status
+    const hasCritical = issues.some(i => i.severity === 'critical' || i.severity === 'high');
+    const hasWarnings = issues.some(i => i.severity === 'medium' || i.severity === 'low');
+    const status = hasCritical ? 'failed' : (hasWarnings ? 'warning' : 'passed');
+
+    return {
+      field: { ...field, testData: this.generateTestData(field), accessibility: {} },
+      tests: {
+        requiredValidation: requiredTest,
+        formatValidation: formatTest,
+        accessibility: accessibilityTest,
+      },
+      status,
+      issues,
+      screenshots,
+    };
+  }
+
+  /**
+   * Test required field validation
+   */
+  private async testRequiredValidation(field: any) {
+    try {
+      // Focus on field, leave empty, blur
+      await this.page!.focus(field.selector);
+      await this.page!.fill(field.selector, ''); // Ensure empty
+      await this.page!.keyboard.press('Tab'); // Blur to trigger validation
+
+      // Wait a bit for error message
+      await this.page!.waitForTimeout(500);
+
+      // Check if error message appeared
+      const errorVisible = await this.page!.evaluate(() => {
+        // Look for common error message patterns
+        const errors = document.querySelectorAll('.error, .invalid, [class*="error"], [aria-invalid="true"]');
+        return errors.length > 0;
+      });
+
+      if (errorVisible) {
+        return { passed: true, message: 'Required validation works correctly' };
+      } else {
+        return { passed: false, message: 'No error shown when required field is empty' };
+      }
+    } catch (error) {
+      return { passed: false, message: `Test failed: ${error}` };
+    }
+  }
+
+  /**
+   * Test format validation (email, tel, url)
+   */
+  private async testFormatValidation(field: any) {
+    try {
+      const invalidData = field.type === 'email' ? 'notanemail' :
+                         field.type === 'tel' ? 'abc123' :
+                         field.type === 'url' ? 'notaurl' : 'invalid';
+
+      await this.page!.fill(field.selector, invalidData);
+      await this.page!.keyboard.press('Tab'); // Blur
+      await this.page!.waitForTimeout(500);
+
+      // Check if error shown for invalid format
+      const errorVisible = await this.page!.evaluate(() => {
+        const errors = document.querySelectorAll('.error, .invalid, [aria-invalid="true"]');
+        return errors.length > 0;
+      });
+
+      if (errorVisible) {
+        // Clear the invalid data
+        await this.page!.fill(field.selector, '');
+        return { passed: true, message: 'Format validation works correctly' };
+      } else {
+        return { passed: false, message: 'No error shown for invalid format' };
+      }
+    } catch (error) {
+      return { passed: false, message: `Test failed: ${error}` };
+    }
+  }
+
+  /**
+   * Test accessibility (WCAG compliance)
+   */
+  private async testAccessibility(field: any, config: FormTestConfig) {
+    const issues: string[] = [];
+
+    // Check 1: Has label
+    if (!field.label && !field.ariaLabel) {
+      issues.push('Missing label or aria-label');
+    }
+
+    // Check 2: Keyboard accessible
+    try {
+      await this.page!.focus(field.selector);
+      const focused = await this.page!.evaluate((selector) => {
+        return document.activeElement === document.querySelector(selector);
+      }, field.selector);
+
+      if (!focused) {
+        issues.push('Not keyboard accessible (cannot focus with Tab)');
+      }
+    } catch {
+      issues.push('Cannot focus field');
+    }
+
+    // Check 3: ARIA attributes (if required)
+    if (field.required && !field.ariaRequired) {
+      issues.push('Missing aria-required="true" attribute');
+    }
+
+    if (issues.length > 0) {
+      return {
+        passed: false,
+        message: `Accessibility issues: ${issues.join(', ')}`,
+        details: {
+          wcagCriteria: '1.3.1 Info and Relationships (Level A)',
+          recommendation: 'Add proper labels and ARIA attributes',
+        },
+      };
+    }
+
+    return { passed: true, message: 'All accessibility checks passed' };
+  }
+
+  /**
+   * Generate test data for field
+   */
+  private generateTestData(field: any): any {
+    switch (field.type) {
+      case 'email':
+        return {
+          valid: ['test@example.com', 'user+tag@domain.co.uk'],
+          invalid: ['notanemail', '@domain.com', ''],
+          edge: ['a@b.c', 'very.long.email.address@subdomain.example.com'],
+        };
+      case 'tel':
+        return {
+          valid: ['+998901234567', '998901234567'],
+          invalid: ['abc', '123'],
+          edge: ['+1234567890123456789', '0000000000'],
+        };
+      case 'password':
+        return {
+          valid: ['SecurePass123!', 'MyP@ssw0rd'],
+          invalid: ['123', 'abc'],
+          edge: ['a', 'A'.repeat(100)],
+        };
+      default:
+        return {
+          valid: ['Valid text'],
+          invalid: [''],
+          edge: ['A'.repeat(1000)],
+        };
+    }
+  }
+
+  /**
+   * Save test results to files
+   */
+  private async saveResults(result: FormTestResult): Promise<void> {
+    // Save JSON
+    const jsonPath = path.join(this.outputDir, 'report.json');
+    fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
+
+    // Save Markdown summary
+    const mdPath = path.join(this.outputDir, 'report.md');
+    const markdown = this.generateMarkdownReport(result);
+    fs.writeFileSync(mdPath, markdown);
+
+    console.log(`\n📄 Reports generated:`);
+    console.log(`   JSON: ${jsonPath}`);
+    console.log(`   Markdown: ${mdPath}`);
+  }
+
+  /**
+   * Generate simple markdown report
+   */
+  private generateMarkdownReport(result: FormTestResult): string {
+    return `# Form Test Report
+
+**Form:** ${result.form.id || 'Unnamed'}
+**Pass Rate:** ${result.summary.passRate}%
+**Duration:** ${(result.duration / 1000).toFixed(2)}s
+**AI Cost:** $${result.aiCost.toFixed(4)}
+
+## Summary
+
+- ✅ Passed: ${result.summary.fieldsPassed}/${result.summary.totalFields}
+- ❌ Failed: ${result.summary.fieldsFailed}/${result.summary.totalFields}
+- ⚠️  Warnings: ${result.summary.fieldsWarning}/${result.summary.totalFields}
+- 🔴 Critical Issues: ${result.summary.criticalIssues}
+- 🟡 Warnings: ${result.summary.warnings}
+
+## Field Results
+
+${result.fieldResults.map((fr, i) => `
+### ${i + 1}. ${fr.field.label} (${fr.field.type})
+
+**Status:** ${fr.status === 'passed' ? '✅ Passed' : fr.status === 'failed' ? '❌ Failed' : '⚠️ Warning'}
+
+${fr.issues.length > 0 ? `**Issues:**\n${fr.issues.map(issue => `- [${issue.severity.toUpperCase()}] ${issue.message}\n  - Recommendation: ${issue.recommendation}`).join('\n')}` : ''}
+`).join('\n')}
+
+## Recommendations
+
+${result.fieldResults.flatMap(fr => fr.issues).filter(i => i.severity === 'critical' || i.severity === 'high').map((issue, i) => `${i + 1}. **[${issue.category}]** ${issue.recommendation}`).join('\n') || 'No critical recommendations'}
+
+---
+
+*Generated by fe-pilot Form Testing*
+`;
+  }
+}

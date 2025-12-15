@@ -7,3 +7,7 @@ fe-pilot-sessions/
 *.png
 *.jpg
 report-*.json
+
+# Environment variables
+.env
+.env.local

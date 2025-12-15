@@ -206,4 +206,154 @@ program
     }
   });
 
+// ============================================================================
+// FORM TESTING COMMANDS (NEW)
+// ============================================================================
+
+const formCommand = program
+  .command('form')
+  .description('Form testing and validation (AI-powered)');
+
+// form analyze - Discover and analyze form structure
+formCommand
+  .command('analyze <url>')
+  .description('Analyze form structure and generate schema')
+  .option('--output <file>', 'Save schema to JSON file')
+  .option('--credentials <user:pass>', 'Credentials for login (format: username:password)')
+  .action(async (url: string, options) => {
+    try {
+      const { FormDiscovery } = await import('./core/form/form-discovery');
+      const { EdgeCaseHandler } = await import('./core/form/edge-case-handler');
+      const { chromium } = await import('playwright');
+
+      console.log(`🔍 Analyzing forms at: ${url}\n`);
+
+      // Parse credentials if provided
+      let credentials;
+      if (options.credentials) {
+        const [username, password] = options.credentials.split(':');
+        if (username && password) {
+          credentials = { username, password };
+        }
+      }
+
+      // Launch browser
+      const browser = await chromium.launch({ headless: true });
+      const page = await browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle' });
+
+      // Handle obstacles
+      const edgeHandler = new EdgeCaseHandler(page, {
+        mode: 'standard',
+        aiMode: 'hybrid',
+        credentials,
+      });
+      await edgeHandler.handleObstacles();
+
+      // Discover forms
+      const discovery = new FormDiscovery(page);
+      const forms = await discovery.detectForms();
+
+      if (forms.length === 0) {
+        console.log('❌ No forms found on page');
+        await browser.close();
+        process.exit(1);
+      }
+
+      console.log(`✓ Found ${forms.length} form(s)\n`);
+
+      // Display analysis
+      forms.forEach((form, index) => {
+        console.log(`📋 Form ${index + 1}: ${form.id || 'unnamed'}`);
+        console.log(`   Fields: ${form.fields.length}`);
+        console.log(`   Wizard: ${form.isWizard ? 'Yes' : 'No'}`);
+        console.log(`   Action: ${form.action || 'N/A'}`);
+        console.log(`   Method: ${form.method || 'N/A'}\n`);
+
+        console.log('   Fields:');
+        form.fields.forEach((field, i) => {
+          console.log(`   ${i + 1}. ${field.label || field.id}`);
+          console.log(`      Type: ${field.type}`);
+          console.log(`      Required: ${field.required ? 'Yes' : 'No'}`);
+          console.log(`      Selector: ${field.selector}`);
+          if (field.validationRules.length > 0) {
+            console.log(`      Validation: ${field.validationRules.map(r => r.type).join(', ')}`);
+          }
+          console.log('');
+        });
+      });
+
+      // Save to file if requested
+      if (options.output) {
+        const fs = await import('fs');
+        fs.writeFileSync(options.output, JSON.stringify(forms, null, 2));
+        console.log(`\n✓ Schema saved to ${options.output}`);
+      }
+
+      await browser.close();
+      process.exit(0);
+    } catch (error) {
+      console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+// form test - Automatically test a form
+formCommand
+  .command('test <url>')
+  .description('Automatically test a form (AI-powered)')
+  .option('--mode <type>', 'Test mode: quick|standard|full', 'standard')
+  .option('--ai-mode <type>', 'AI mode: disabled|fallback|hybrid|always', 'hybrid')
+  .option('--credentials <user:pass>', 'Credentials for login (format: username:password)')
+  .option('--output <dir>', 'Output directory for results')
+  .option('--headless', 'Run in headless mode (default: true)', true)
+  .option('--headed', 'Show browser')
+  .action(async (url: string, options) => {
+    try {
+      const { FormTester } = await import('./core/form/form-tester');
+
+      console.log('🤖 fe-pilot Form Testing\n');
+
+      // Parse credentials
+      let credentials;
+      if (options.credentials) {
+        const [username, password] = options.credentials.split(':');
+        if (!username || !password) {
+          console.error('❌ Invalid credentials format. Use: username:password');
+          process.exit(1);
+        }
+        credentials = { username, password };
+      }
+
+      // Create tester
+      const tester = new FormTester({
+        headless: options.headed ? false : options.headless,
+        outputDir: options.output,
+        aiMode: options.aiMode,
+      });
+
+      // Run test
+      const result = await tester.testForm(url, {
+        mode: options.mode,
+        credentials,
+      });
+
+      // Display summary
+      console.log('\n' + '='.repeat(80));
+      console.log('\n📊 FORM TEST SUMMARY\n');
+      console.log(`Form: ${result.form.id || 'Unnamed'}`);
+      console.log(`✅ Pass Rate: ${result.summary.passRate}%`);
+      console.log(`❌ Critical Issues: ${result.summary.criticalIssues}`);
+      console.log(`⚠️  Warnings: ${result.summary.warnings}`);
+      console.log(`⏱️  Duration: ${(result.duration / 1000).toFixed(2)}s`);
+      console.log(`💰 AI Cost: $${result.aiCost.toFixed(4)}`);
+      console.log('\n' + '='.repeat(80));
+
+      process.exit(result.summary.criticalIssues > 0 ? 1 : 0);
+    } catch (error) {
+      console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
 program.parse();

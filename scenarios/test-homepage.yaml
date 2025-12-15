@@ -1,0 +1,29 @@
+name: "Test Homepage"
+url: "https://staging.jahongir-app.uz"
+
+config:
+  headless: true
+  viewport:
+    width: 1280
+    height: 720
+  timeout: 30000
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Navigate to homepage"
+    observe: true
+    expect:
+      - type: element_visible
+        selector: "body"
+
+  - action: screenshot
+    description: "Homepage initial state"
+
+  - action: wait
+    duration: 2000
+    description: "Wait for page to fully load"
+
+  - action: screenshot
+    description: "Homepage after load"
+    observe: true

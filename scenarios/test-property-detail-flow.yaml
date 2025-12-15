@@ -1,0 +1,99 @@
+name: "Test Property Detail User Flow"
+description: "Test complete user journey: search → filter → view property → contact"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  # 1. Start on properties page
+  - action: navigate
+    url: "{{url}}"
+    description: "Navigate to properties page"
+    expectations:
+      - type: element_visible
+        selector: "h1, h2"
+
+  - action: screenshot
+    description: "Initial properties page"
+
+  - action: wait
+    duration: 2000
+
+  # 2. Apply filters
+  - action: click
+    selector: "button:has-text('Купить')"
+    description: "Ensure Buy tab is active"
+
+  - action: wait
+    duration: 1000
+
+  # 3. Click on first property card
+  - action: click
+    selector: "article:first-of-type, div[class*='property']:first-of-type, a[href*='/properties/']:first-of-type"
+    description: "Click first property card"
+    expectations:
+      - type: url_change
+        contains: "/properties/"
+
+  - action: screenshot
+    description: "After clicking property card"
+
+  - action: wait
+    duration: 3000
+    description: "Wait for property detail page to load"
+
+  # 4. Verify property detail page loaded
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "h1, h2"
+        description: "Property title should be visible"
+      - type: no_console_errors
+        severity: error
+
+  - action: screenshot
+    description: "Property detail page loaded"
+
+  # 5. Scroll down to see details
+  - action: scroll
+    direction: down
+    amount: 500
+    description: "Scroll to see property details"
+
+  - action: screenshot
+    description: "Property details section"
+
+  - action: wait
+    duration: 1000
+
+  # 6. Scroll to contact section
+  - action: scroll
+    direction: down
+    amount: 500
+    description: "Scroll to contact section"
+
+  - action: screenshot
+    description: "Contact section visible"
+
+  - action: wait
+    duration: 1000
+
+  # 7. Check for contact button or agent info
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "button, a[href*='tel'], a[href*='mailto']"
+        description: "Contact buttons should be visible"
+
+  # 8. Test back navigation
+  - action: click
+    selector: "a[href='/properties'], button:has-text('Назад'), a:has-text('Назад')"
+    description: "Click back to properties"
+    optional: true
+
+  - action: screenshot
+    description: "After back navigation"
+
+  # Final verification
+  - action: verify
+    expectations:
+      - type: no_console_errors
+        severity: error

@@ -1,0 +1,75 @@
+{
+  "reasoning": "Upload file with authentication - demonstrates upload action type and auth requirement",
+  "actions": [
+    {
+      "action": "comment",
+      "description": "=== IMPORTANT: Must login before upload (401 if not authenticated) ==="
+    },
+    {
+      "action": "click",
+      "selector": "text=Login, text=Войти",
+      "description": "Open login modal"
+    },
+    {
+      "action": "wait",
+      "duration": 500
+    },
+    {
+      "action": "type",
+      "selector": "input[type='email']",
+      "value": "test@example.com",
+      "description": "Enter email"
+    },
+    {
+      "action": "type",
+      "selector": "input[type='password']",
+      "value": "password123",
+      "description": "Enter password"
+    },
+    {
+      "action": "click",
+      "selector": "button[type='submit']",
+      "description": "Submit login"
+    },
+    {
+      "action": "wait",
+      "duration": 2000,
+      "description": "Wait for login to complete and session to establish"
+    },
+    {
+      "action": "screenshot",
+      "description": "Logged in - ready for upload"
+    },
+    {
+      "action": "comment",
+      "description": "=== Now upload is authenticated and should succeed ==="
+    },
+    {
+      "action": "upload",
+      "selector": "input[type='file']",
+      "value": "/home/odil/fe-pilot/test-property-photo.jpg",
+      "description": "Upload single property photo"
+    },
+    {
+      "action": "wait",
+      "duration": 3000,
+      "description": "Wait for upload to complete and thumbnail to appear"
+    },
+    {
+      "action": "screenshot",
+      "description": "After upload - should show thumbnail"
+    }
+  ],
+  "notes": [
+    "Upload returns 401 Unauthorized if user not logged in",
+    "Backend requires valid session for /api/upload/images endpoint",
+    "Always login before upload actions",
+    "Multiple files: use comma-separated paths in value field"
+  ],
+  "multipleFilesExample": {
+    "action": "upload",
+    "selector": "input[type='file']",
+    "value": "/path/photo1.jpg, /path/photo2.jpg, /path/photo3.jpg",
+    "description": "Upload multiple photos (comma-separated)"
+  }
+}

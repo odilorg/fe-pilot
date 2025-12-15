@@ -1,0 +1,129 @@
+{
+  "reasoning": "Test form validation and error handling - demonstrates verification action",
+  "actions": [
+    {
+      "action": "comment",
+      "description": "=== Test invalid email validation ==="
+    },
+    {
+      "action": "type",
+      "selector": "input[type='email']",
+      "value": "invalid-email",
+      "description": "Enter invalid email (missing @)"
+    },
+    {
+      "action": "click",
+      "selector": "text=Submit, button[type='submit']",
+      "description": "Submit form with invalid data"
+    },
+    {
+      "action": "screenshot",
+      "description": "Should show validation error for email"
+    },
+    {
+      "action": "verify",
+      "expect": [
+        {
+          "type": "element_visible",
+          "selector": "text=Invalid email, text=Please enter a valid email"
+        }
+      ],
+      "description": "Verify error message appears"
+    },
+    {
+      "action": "comment",
+      "description": "=== Test required field validation ==="
+    },
+    {
+      "action": "click",
+      "selector": "text=Next, text=Submit",
+      "description": "Try to proceed with empty required fields"
+    },
+    {
+      "action": "screenshot",
+      "description": "Should show required field errors"
+    },
+    {
+      "action": "verify",
+      "expect": [
+        {
+          "type": "element_visible",
+          "selector": "text=Required, text=This field is required"
+        }
+      ],
+      "description": "Verify required field error appears"
+    },
+    {
+      "action": "comment",
+      "description": "=== Test successful submission after fixing errors ==="
+    },
+    {
+      "action": "type",
+      "selector": "input[type='email']",
+      "value": "valid@example.com",
+      "description": "Enter valid email"
+    },
+    {
+      "action": "type",
+      "selector": "input[required][name='title']",
+      "value": "Valid Title Here",
+      "description": "Fill required title field"
+    },
+    {
+      "action": "type",
+      "selector": "textarea[required]",
+      "value": "Valid description with sufficient length to pass validation requirements",
+      "description": "Fill required description field (50+ characters)"
+    },
+    {
+      "action": "screenshot",
+      "description": "All fields valid - before submit"
+    },
+    {
+      "action": "click",
+      "selector": "text=Submit, button[type='submit']",
+      "description": "Submit form with valid data"
+    },
+    {
+      "action": "wait",
+      "duration": 2000,
+      "description": "Wait for submission"
+    },
+    {
+      "action": "screenshot",
+      "description": "After successful submission"
+    },
+    {
+      "action": "verify",
+      "expect": [
+        {
+          "type": "url_changed",
+          "pattern": "/success"
+        },
+        {
+          "type": "element_visible",
+          "selector": "text=Success, text=Thank you"
+        }
+      ],
+      "description": "Verify successful submission (URL change + success message)"
+    }
+  ],
+  "verificationTypes": [
+    {
+      "type": "element_visible",
+      "description": "Check if element is visible on page"
+    },
+    {
+      "type": "element_text",
+      "description": "Check if element contains specific text"
+    },
+    {
+      "type": "url_changed",
+      "description": "Check if URL matches pattern"
+    },
+    {
+      "type": "element_count",
+      "description": "Check number of matching elements"
+    }
+  ]
+}

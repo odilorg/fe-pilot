@@ -1,0 +1,128 @@
+{
+  "reasoning": "Complete multi-step property listing form - demonstrates action batching across steps",
+  "actions": [
+    {
+      "action": "comment",
+      "description": "=== STEP 1: Property Type ==="
+    },
+    {
+      "action": "click",
+      "selector": "text=Apartment, text=Квартира",
+      "description": "Select Apartment as property type"
+    },
+    {
+      "action": "wait",
+      "duration": 300
+    },
+    {
+      "action": "click",
+      "selector": "text=For Sale, text=Продажа",
+      "description": "Select For Sale as listing type"
+    },
+    {
+      "action": "wait",
+      "duration": 300
+    },
+    {
+      "action": "click",
+      "selector": "text=Next, text=Далее, button:has-text('Next')",
+      "description": "Proceed to Step 2"
+    },
+    {
+      "action": "comment",
+      "description": "=== STEP 2: Location ==="
+    },
+    {
+      "action": "select",
+      "selector": "select:has(option:has-text('Tashkent')), select[name='city']",
+      "value": "Tashkent",
+      "description": "Select Tashkent city"
+    },
+    {
+      "action": "wait",
+      "duration": 500,
+      "description": "Wait for district dropdown to populate"
+    },
+    {
+      "action": "select",
+      "selector": "select:has(option:has-text('Yunusabad')), select[name='district']",
+      "value": "Yunusabad",
+      "description": "Select Yunusabad district"
+    },
+    {
+      "action": "type",
+      "selector": "input[placeholder*='Street'], input[name='address']",
+      "value": "Mustaqillik St, 25",
+      "description": "Enter street address"
+    },
+    {
+      "action": "type",
+      "selector": "input[placeholder*='Mahalla'], input[name='mahalla']",
+      "value": "Mustaqillik Mahalla",
+      "description": "Enter mahalla name"
+    },
+    {
+      "action": "click",
+      "selector": "text=Next, text=Далее",
+      "description": "Proceed to Step 3"
+    },
+    {
+      "action": "comment",
+      "description": "=== STEP 3: Basic Information ==="
+    },
+    {
+      "action": "type",
+      "selector": "input[name='price'], input[placeholder*='Price']",
+      "value": "185000",
+      "description": "Enter price: 185,000 USD"
+    },
+    {
+      "action": "type",
+      "selector": "input[name='area'], input[placeholder*='Area']",
+      "value": "95",
+      "description": "Enter total area: 95 m²"
+    },
+    {
+      "action": "type",
+      "selector": "input[name='rooms'], input[placeholder*='Rooms']",
+      "value": "4",
+      "description": "Enter number of rooms: 4"
+    },
+    {
+      "action": "click",
+      "selector": "text=Next, text=Далее",
+      "description": "Proceed to Step 4"
+    },
+    {
+      "action": "comment",
+      "description": "=== STEP 4: Characteristics ==="
+    },
+    {
+      "action": "click",
+      "selector": "text=Comfort, text=Комфорт",
+      "description": "Select Comfort housing class"
+    },
+    {
+      "action": "wait",
+      "duration": 300
+    },
+    {
+      "action": "click",
+      "selector": "text=Separate, text=Раздельный",
+      "description": "Select Separate bathroom type"
+    },
+    {
+      "action": "wait",
+      "duration": 300
+    },
+    {
+      "action": "click",
+      "selector": "text=Next, text=Далее",
+      "description": "Proceed to Step 5"
+    },
+    {
+      "action": "screenshot",
+      "description": "Reached Step 5 - before photos and description"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+name: Bedroom Filter Final Verification
+url: https://staging.jahongir-app.uz/en/properties
+steps:
+  - action: wait
+    duration: 2000
+    description: Wait for page load
+    
+  - action: screenshot
+    description: Initial page state
+    
+  - action: click
+    selector: "button:has-text('2 Bedrooms')"
+    description: Open bedroom filter dropdown
+    
+  - action: wait
+    duration: 500
+    description: Wait for dropdown to open
+    
+  - action: screenshot
+    description: Dropdown opened
+    
+  - action: click
+    selector: "text=Studio"
+    description: Select Studio
+    
+  - action: wait
+    duration: 1000
+    description: Wait for filter to apply
+    
+  - action: screenshot
+    description: After selecting Studio
+    
+  - action: click
+    selector: "text=1-bedroom"
+    description: Select 1-bedroom
+    
+  - action: wait
+    duration: 1000
+    description: Wait for filter to apply
+    
+  - action: screenshot
+    description: After selecting 1-bedroom
+    
+  - action: click
+    selector: "text=2-bedroom"
+    description: Select 2-bedroom
+    
+  - action: wait
+    duration: 1000
+    description: Wait for filter to apply
+    
+  - action: screenshot
+    description: After selecting 2-bedroom (all 3 selected)
+    
+  - action: click
+    selector: "body"
+    description: Click outside to close dropdown
+    
+  - action: wait
+    duration: 1000
+    description: Wait for dropdown to close
+    
+  - action: screenshot
+    description: Final state - dropdown closed with all 3 selected
+    
+  - action: verify
+    expect:
+      - type: url_contains
+        value: "bedrooms"
+      - type: no_console_errors

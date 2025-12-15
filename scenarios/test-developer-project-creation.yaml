@@ -1,0 +1,116 @@
+name: "Test Developer Project Creation"
+description: "Login as developer admin and create a new project through the UI form"
+url: "https://staging.jahongir-app.uz"
+
+steps:
+  # Step 1: Navigate to login page
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/auth/login"
+    observe: true
+    description: "Navigate to login page"
+
+  # Step 2: Click "Login via Email" button to switch from phone to email login
+  - action: click
+    selector: "button:has-text('Войти через Email'), button:has-text('Login via Email'), button:has-text('Use email')"
+    observe: true
+    wait_after: 1000
+    description: "Switch to email login mode"
+
+  # Step 3: Fill in email - using Tashkent City developer admin credentials
+  - action: type
+    selector: "input[type='email'], input[name='email'], input#email"
+    value: "developer@tashkent-city.uz"
+    description: "Enter email address"
+
+  # Step 4: Fill in password - Developer123
+  - action: type
+    selector: "input[type='password'], input[name='password'], input#password"
+    value: "Developer123"
+    description: "Enter password"
+
+  # Step 5: Take screenshot before login
+  - action: screenshot
+    description: "Capture login form before submission"
+
+  # Step 6: Submit login form and wait longer for redirect
+  - action: click
+    selector: "button[type='submit']"
+    observe: true
+    wait_after: 5000
+    description: "Click login button and wait for redirect to complete"
+
+  # Step 7: Check that we're now logged in (should have redirected to /properties)
+  - action: screenshot
+    observe: true
+    description: "Capture page after login - should show /properties"
+
+  # Step 8: Navigate to developer dashboard
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/developer"
+    observe: true
+    wait_after: 3000
+    description: "Go to developer dashboard"
+
+  # Step 9: Take screenshot of developer dashboard
+  - action: screenshot
+    observe: true
+    description: "Capture developer dashboard"
+
+  # Step 10: Click on "Projects" tab in the developer CRM navigation
+  - action: click
+    selector: "a:has-text('Проекты'), a[href*='/developer/projects'], button:has-text('Проекты')"
+    observe: true
+    wait_after: 3000
+    description: "Navigate to projects page via tab"
+
+  # Step 11: Take screenshot of projects page
+  - action: screenshot
+    observe: true
+    description: "Capture projects page"
+
+  # Step 12: Click on "Create Project" button
+  - action: click
+    selector: "a[href*='/developer/projects/new'], button:has-text('Создать проект'), a:has-text('Создать проект'), button:has-text('Создать'), a:has-text('Создать')"
+    observe: true
+    wait_after: 2000
+    description: "Click create new project button"
+
+  # Step 13: Take screenshot of project creation form
+  - action: screenshot
+    observe: true
+    description: "Capture project creation form"
+
+  # Step 14: Fill project name (Russian)
+  - action: type
+    selector: "input[name='name'], #name"
+    value: "Тестовый Премиум Резиденс"
+    description: "Enter project name in Russian"
+
+  # Step 15: Fill address
+  - action: type
+    selector: "input[name='address'], #address"
+    value: "ул. Навои 100, Ташкент"
+    description: "Enter project address"
+
+  # Step 16: Fill total units
+  - action: type
+    selector: "input[name='totalUnits'], #totalUnits"
+    value: "200"
+    description: "Enter total units"
+
+  # Step 17: Take screenshot before submit
+  - action: screenshot
+    description: "Capture filled form before submission"
+    observe: true
+
+  # Step 18: Submit the form
+  - action: click
+    selector: "button[type='submit']"
+    observe: true
+    wait_after: 5000
+    description: "Submit the project creation form"
+
+  # Step 19: Final screenshot to verify result
+  - action: screenshot
+    description: "Capture result after form submission"
+    observe: true

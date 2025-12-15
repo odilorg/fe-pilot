@@ -1,0 +1,119 @@
+name: "Comprehensive Filter Validation"
+description: "Test that filters actually change the results displayed"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  # 1. Initial state - count properties
+  - action: navigate
+    url: "{{url}}"
+    description: "Load properties page"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Initial state - all properties"
+
+  # 2. Test Buy tab (should be default)
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "button:has-text('Купить')"
+
+  # 3. Switch to Rent and verify URL/state changes
+  - action: click
+    selector: "button:has-text('Снять')"
+    description: "Click Rent tab"
+
+  - action: wait
+    duration: 3000
+    description: "Wait for properties to reload"
+
+  - action: screenshot
+    description: "After clicking Rent - should show rental properties"
+
+  - action: verify
+    expectations:
+      - type: url_contains
+        value: "listingType=RENT"
+        description: "URL should contain RENT parameter"
+
+  # 4. Switch to Daily
+  - action: click
+    selector: "button:has-text('Посуточно')"
+    description: "Click Daily tab"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Daily rentals view"
+
+  - action: verify
+    expectations:
+      - type: url_contains
+        value: "listingType=RENT_DAILY"
+
+  # 5. Switch back to Buy
+  - action: click
+    selector: "button:has-text('Купить')"
+    description: "Back to Buy"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Back to Buy - for sale properties"
+
+  - action: verify
+    expectations:
+      - type: url_contains
+        value: "listingType=SALE"
+
+  # 6. Test search filter
+  - action: type
+    selector: "input[placeholder*='Адрес']"
+    value: "Самарканд"
+    description: "Search for Samarkand properties"
+
+  - action: wait
+    duration: 2000
+
+  - action: screenshot
+    description: "After searching for Самарканд"
+
+  # 7. Click search button
+  - action: click
+    selector: "button:has-text('Найти')"
+    description: "Click search button"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Search results for Самарканд"
+
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "article, div[class*='property'], .property-card"
+        description: "Properties should be visible"
+
+  # 8. Clear search and verify reset
+  - action: navigate
+    url: "{{url}}"
+    description: "Reset to default view"
+
+  - action: wait
+    duration: 2000
+
+  - action: screenshot
+    description: "Reset to all properties"
+
+  # Final verification
+  - action: verify
+    expectations:
+      - type: no_console_errors
+        severity: error
+      - type: element_visible
+        selector: "button:has-text('Купить')"

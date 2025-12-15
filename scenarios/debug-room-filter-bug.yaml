@@ -1,0 +1,70 @@
+name: "Debug Room Filter Bug"
+description: "Reproduce the 'Failed to fetch properties' error when selecting multiple bedrooms"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Load properties page"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Initial state"
+
+  # Click "3 Выбрано:" (bedrooms dropdown)
+  - action: click
+    selector: "button:has-text('Выбрано'), button:has-text('Комнатность')"
+    description: "Open bedrooms filter dropdown"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "Bedrooms dropdown opened"
+
+  # Select 1-bedroom
+  - action: click
+    selector: "input[type='checkbox'][value='1'], label:has-text('1-комнатная')"
+    description: "Select 1-bedroom"
+
+  - action: wait
+    duration: 500
+
+  # Select 2-bedroom
+  - action: click
+    selector: "input[type='checkbox'][value='2'], label:has-text('2-комнатная')"
+    description: "Select 2-bedroom"
+
+  - action: wait
+    duration: 500
+
+  # Select 3-bedroom
+  - action: click
+    selector: "input[type='checkbox'][value='3'], label:has-text('3-комнатная')"
+    description: "Select 3-bedroom"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "After selecting 1, 2, 3 bedrooms"
+
+  # Click outside to close dropdown
+  - action: click
+    selector: "body"
+    description: "Close dropdown"
+
+  - action: wait
+    duration: 3000
+    description: "Wait for properties to load"
+
+  - action: screenshot
+    description: "After filter applied - check for error"
+
+  # Verify if error appears
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "body"

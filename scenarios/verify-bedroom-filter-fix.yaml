@@ -1,0 +1,101 @@
+name: "Verify Bedroom Filter Fix"
+description: "Verify that rapidly clicking bedroom checkboxes preserves all selections"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Load properties page"
+
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Initial page load"
+
+  # Open bedroom dropdown
+  - action: click
+    selector: "button:has-text('Выбрано'), button:has-text('Комнатность'), button:has-text('комнат')"
+    description: "Open bedrooms filter dropdown"
+
+  - action: wait
+    duration: 800
+
+  - action: screenshot
+    description: "Bedrooms dropdown opened"
+
+  # Rapid clicks - select 1, 2, 3 bedrooms
+  - action: click
+    selector: "input[type='checkbox'][value='1'], label:has-text('1-комнатная')"
+    description: "Click 1-bedroom"
+
+  - action: wait
+    duration: 100
+
+  - action: click
+    selector: "input[type='checkbox'][value='2'], label:has-text('2-комнатная')"
+    description: "Click 2-bedroom (immediately after)"
+
+  - action: wait
+    duration: 100
+
+  - action: click
+    selector: "input[type='checkbox'][value='3'], label:has-text('3-комнатная')"
+    description: "Click 3-bedroom (immediately after)"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "After rapid clicks - should show all 3 checked"
+
+  # Verify all checkboxes are still checked
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "input[type='checkbox'][value='1']:checked, label:has-text('1-комнатная')"
+        description: "1-bedroom should be checked"
+      - type: element_visible
+        selector: "input[type='checkbox'][value='2']:checked, label:has-text('2-комнатная')"
+        description: "2-bedroom should be checked"
+      - type: element_visible
+        selector: "input[type='checkbox'][value='3']:checked, label:has-text('3-комнатная')"
+        description: "3-bedroom should be checked"
+
+  # Close dropdown
+  - action: click
+    selector: "body"
+    description: "Close dropdown by clicking outside"
+
+  - action: wait
+    duration: 2000
+
+  - action: screenshot
+    description: "After dropdown closed - check filter tags"
+
+  # Verify filter tags appear for all 3 selections
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "span:has-text('1-'), span:has-text('1-комнат')"
+        description: "1-bedroom tag should be visible"
+      - type: element_visible
+        selector: "span:has-text('2-'), span:has-text('2-комнат')"
+        description: "2-bedroom tag should be visible"
+      - type: element_visible
+        selector: "span:has-text('3-'), span:has-text('3-комнат')"
+        description: "3-bedroom tag should be visible"
+
+  # Wait for properties to load
+  - action: wait
+    duration: 3000
+
+  - action: screenshot
+    description: "Final state - properties loaded"
+
+  # Verify NO error message appears
+  - action: verify
+    expectations:
+      - type: element_not_visible
+        selector: "div:has-text('Failed to fetch'), div:has-text('Не удалось')"
+        description: "No error message should appear"

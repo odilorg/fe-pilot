@@ -1,0 +1,89 @@
+name: "Final Verification - Studio, 1-bedroom, 2-bedroom"
+description: "Test selecting Studio, 1-bedroom, 2-bedroom to verify fix"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Load properties page"
+
+  - action: wait
+    duration: 4000
+    description: "Wait for page to fully load"
+
+  - action: screenshot
+    description: "Initial page load"
+
+  # Open bedroom filter dropdown
+  - action: click
+    selector: "button:has-text('Выбрано'), button:has-text('Комнатность'), button:has-text('комнат')"
+    description: "Open bedrooms filter"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "Dropdown opened"
+
+  # Select Studio (value=0)
+  - action: click
+    selector: "label:has-text('Студия')"
+    description: "Click Studio checkbox"
+
+  - action: wait
+    duration: 300
+
+  - action: screenshot
+    description: "After selecting Studio"
+
+  # Select 1-bedroom (value=1)
+  - action: click
+    selector: "label:has-text('1-комнатная')"
+    description: "Click 1-bedroom checkbox"
+
+  - action: wait
+    duration: 300
+
+  - action: screenshot
+    description: "After selecting 1-bedroom"
+
+  # Select 2-bedroom (value=2)
+  - action: click
+    selector: "label:has-text('2-комнатная')"
+    description: "Click 2-bedroom checkbox"
+
+  - action: wait
+    duration: 500
+
+  - action: screenshot
+    description: "After selecting 2-bedroom - all 3 should be checked"
+
+  # Close dropdown
+  - action: click
+    selector: "body"
+    description: "Click outside to close dropdown"
+
+  - action: wait
+    duration: 3000
+    description: "Wait for API call to complete"
+
+  - action: screenshot
+    description: "Final state after closing dropdown"
+
+  # Verify that all 3 filter tags are visible
+  - action: captureText
+    selector: "body"
+    description: "Capture all text to verify filter tags"
+
+  # Verify NO error message
+  - action: verify
+    expectations:
+      - type: element_not_visible
+        selector: "div:has-text('Failed to fetch'), div.bg-red-50"
+        description: "Error message should NOT be visible"
+
+  - action: wait
+    duration: 2000
+
+  - action: screenshot
+    description: "Final verification screenshot"

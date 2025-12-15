@@ -1,0 +1,21 @@
+# AI Environment Marker
+# This file helps AI identify the current working environment
+# ALWAYS read this file before making changes after auto-compact
+
+ENVIRONMENT=local
+HOSTNAME=odil-laptop
+USER=odil
+PROJECT_PATH=/home/odil/fe-pilot
+LAST_UPDATED=2024-12-13
+
+# VPS Information (if working remotely)
+# VPS_HOSTNAME=your-vps-hostname
+# VPS_USER=root
+# VPS_PROJECT_PATH=/path/to/fe-pilot-on-vps
+# VPS_IP=62.72.22.205
+
+# Instructions for AI:
+# 1. Read this file FIRST after any auto-compact
+# 2. Run `pwd && hostname` to verify current location
+# 3. If mismatch detected, ask user before proceeding
+# 4. Update this file if switching environments

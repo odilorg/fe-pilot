@@ -1,0 +1,64 @@
+name: "Visual Verification with Screenshots"
+description: "Test bedroom filter and capture final screenshot for visual confirmation"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Load properties page"
+
+  - action: wait
+    duration: 5000
+
+  - action: screenshot
+    description: "01-initial-page"
+
+  - action: click
+    selector: "button:has-text('Выбрано'), button:has-text('Комнатность')"
+    description: "Open bedroom dropdown"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "02-dropdown-opened"
+
+  - action: click
+    selector: "label:has-text('Студия')"
+    description: "Select Studio"
+
+  - action: wait
+    duration: 500
+
+  - action: screenshot
+    description: "03-studio-selected"
+
+  - action: click
+    selector: "label:has-text('1-комнатная')"
+    description: "Select 1-bedroom"
+
+  - action: wait
+    duration: 500
+
+  - action: screenshot
+    description: "04-1bedroom-selected"
+
+  - action: click
+    selector: "label:has-text('2-комнатная')"
+    description: "Select 2-bedroom"
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "05-all-three-selected"
+
+  - action: click
+    selector: "body"
+    description: "Close dropdown"
+
+  - action: wait
+    duration: 4000
+
+  - action: screenshot
+    description: "06-FINAL-RESULT"

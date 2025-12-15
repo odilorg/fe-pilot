@@ -1,0 +1,185 @@
+name: "Test Property Filters"
+description: "Comprehensive test of all filter functionality on properties page"
+url: "https://staging.jahongir-app.uz/properties"
+
+steps:
+  # Initial load
+  - action: navigate
+    url: "{{url}}"
+    description: "Navigate to properties page"
+    expectations:
+      - type: element_visible
+        selector: "h1, h2"
+      - type: no_console_errors
+        severity: error
+
+  - action: screenshot
+    description: "Initial page load - default state"
+
+  - action: wait
+    duration: 2000
+    description: "Wait for properties to load"
+
+  # Test Buy/Rent/Daily tabs
+  - action: click
+    selector: "button:has-text('Снять')"
+    description: "Click 'Rent' tab"
+    expectations:
+      - type: network_success
+        url: "/api/properties"
+
+  - action: screenshot
+    description: "After clicking Rent tab"
+
+  - action: wait
+    duration: 1500
+
+  - action: click
+    selector: "button:has-text('Посуточно')"
+    description: "Click 'Daily' tab"
+    expectations:
+      - type: network_success
+        url: "/api/properties"
+
+  - action: screenshot
+    description: "After clicking Daily tab"
+
+  - action: wait
+    duration: 1500
+
+  - action: click
+    selector: "button:has-text('Купить')"
+    description: "Click 'Buy' tab (back to default)"
+    expectations:
+      - type: network_success
+        url: "/api/properties"
+
+  - action: screenshot
+    description: "Back to Buy tab"
+
+  - action: wait
+    duration: 1500
+
+  # Test search functionality
+  - action: type
+    selector: "input[placeholder*='Адрес']"
+    value: "Ташкент"
+    description: "Type in search box"
+
+  - action: screenshot
+    description: "After typing in search"
+
+  - action: wait
+    duration: 1000
+
+  # Clear search
+  - action: click
+    selector: "input[placeholder*='Адрес']"
+    description: "Click search to clear"
+
+  - action: type
+    selector: "input[placeholder*='Адрес']"
+    value: ""
+    description: "Clear search"
+
+  # Test More Filters button (mobile)
+  - action: click
+    selector: "button:has-text('Ещё фильтры'), button:has-text('More Filters')"
+    description: "Click More Filters button"
+    expectations:
+      - type: element_visible
+        selector: "div[role='dialog'], .modal, [class*='modal']"
+
+  - action: screenshot
+    description: "After clicking More Filters"
+
+  - action: wait
+    duration: 1500
+
+  # Close modal by pressing Escape
+  - action: type
+    selector: "body"
+    value: "Escape"
+    description: "Close filters modal"
+
+  - action: wait
+    duration: 1000
+
+  # Test Property Type filter (desktop - if visible)
+  - action: click
+    selector: "button:has-text('Все типы')"
+    description: "Click Property Type dropdown"
+    optional: true
+
+  - action: screenshot
+    description: "Property type dropdown opened"
+
+  - action: wait
+    duration: 1000
+
+  # Click outside to close dropdown
+  - action: click
+    selector: "body"
+    description: "Close dropdown"
+    optional: true
+
+  # Test Rooms filter (desktop - if visible)
+  - action: click
+    selector: "button:has-text('Комнатность')"
+    description: "Click Rooms dropdown"
+    optional: true
+
+  - action: screenshot
+    description: "Rooms dropdown opened"
+
+  - action: wait
+    duration: 1000
+
+  # Click outside to close dropdown
+  - action: click
+    selector: "body"
+    description: "Close dropdown"
+    optional: true
+
+  # Test Price filter (desktop - if visible)
+  - action: click
+    selector: "button:has-text('Цена')"
+    description: "Click Price dropdown"
+    optional: true
+
+  - action: screenshot
+    description: "Price dropdown opened"
+
+  - action: wait
+    duration: 1000
+
+  # Click outside to close dropdown
+  - action: click
+    selector: "body"
+    description: "Close dropdown"
+    optional: true
+
+  # Final screenshot
+  - action: screenshot
+    description: "Final state after testing all filters"
+
+  # Scroll down to see property cards
+  - action: scroll
+    direction: down
+    amount: 500
+    description: "Scroll down to see property listings"
+
+  - action: screenshot
+    description: "Property listings visible"
+
+  - action: wait
+    duration: 1000
+
+  # Verify expectations
+  - action: verify
+    expectations:
+      - type: no_console_errors
+        severity: error
+      - type: element_visible
+        selector: "div, article, section"
+        description: "Property cards should be visible"

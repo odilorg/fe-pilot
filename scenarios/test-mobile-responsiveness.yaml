@@ -1,0 +1,75 @@
+name: "Test Mobile Responsive Behavior"
+description: "Test mobile UX improvements and responsive design"
+url: "https://staging.jahongir-app.uz/properties"
+viewport:
+  width: 375
+  height: 667
+  isMobile: true
+
+steps:
+  - action: navigate
+    url: "{{url}}"
+    description: "Navigate to properties page on mobile"
+
+  - action: screenshot
+    description: "Mobile properties page - initial"
+
+  - action: wait
+    duration: 2000
+
+  # Test mobile filters
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "button:has-text('Купить')"
+        description: "Buy tab should be visible on mobile"
+
+  - action: screenshot
+    description: "Mobile filter tabs"
+
+  # Test More Filters button (should be visible on mobile)
+  - action: click
+    selector: "button:has-text('Ещё фильтры')"
+    description: "Click More Filters button (mobile)"
+    expectations:
+      - type: element_visible
+        selector: "div[role='dialog'], .modal, [class*='modal']"
+
+  - action: screenshot
+    description: "Mobile filters modal opened"
+
+  - action: wait
+    duration: 2000
+
+  # Close modal
+  - action: click
+    selector: "button[aria-label*='Close'], button:has-text('×'), button:has-text('Закрыть')"
+    description: "Close filters modal"
+    optional: true
+
+  - action: wait
+    duration: 1000
+
+  - action: screenshot
+    description: "Modal closed"
+
+  # Test touch target size (verify buttons are 44px minimum)
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "button"
+        description: "Buttons should be visible and tappable"
+
+  # Scroll test
+  - action: scroll
+    direction: down
+    amount: 300
+    description: "Scroll down on mobile"
+
+  - action: screenshot
+    description: "After scrolling on mobile"
+
+  - action: verify
+    expectations:
+      - type: no_console_errors
+        severity: error

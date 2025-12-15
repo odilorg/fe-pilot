@@ -1,0 +1,58 @@
+name: "Test Login Flow"
+url: "https://staging.jahongir-app.uz"
+
+credentials:
+  username: "test@example.com"
+  password: "testpass123"
+
+config:
+  headless: true
+  viewport:
+    width: 1280
+    height: 720
+
+steps:
+  - action: navigate
+    url: "{{url}}/auth/login"
+    description: "Navigate to login page"
+    observe: true
+
+  - action: screenshot
+    description: "Login page initial state"
+
+  - action: wait
+    selector: "#email"
+    description: "Wait for login form to appear"
+
+  - action: type
+    selector: "#email"
+    value: "{{credentials.username}}"
+    description: "Enter email address"
+
+  - action: type
+    selector: "#password"
+    value: "{{credentials.password}}"
+    description: "Enter password"
+
+  - action: screenshot
+    description: "Form filled out"
+
+  - action: click
+    selector: "button[type='submit']"
+    description: "Click login button"
+    wait_after: 2000
+    observe: true
+    expect:
+      - type: no_console_errors
+      - type: network_success
+        url: "/api/auth/login"
+
+  - action: screenshot
+    description: "After login attempt"
+    observe: true
+
+  - action: verify
+    description: "Verify successful login"
+    expect:
+      - type: url_changed
+        pattern: "/(dashboard|home|properties)"

@@ -1,0 +1,5 @@
+name: Test YAML Parsing
+url: https://example.com
+steps:
+  - action: screenshot
+    description: Take screenshot

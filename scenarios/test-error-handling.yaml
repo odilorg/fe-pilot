@@ -1,0 +1,79 @@
+name: "Test Error Handling and Edge Cases"
+description: "Test how the app handles errors and edge cases"
+url: "https://staging.jahongir-app.uz"
+
+steps:
+  # Test 1: Navigate to non-existent page
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/nonexistent-page-12345"
+    description: "Navigate to 404 page"
+
+  - action: screenshot
+    description: "404 error page"
+
+  - action: wait
+    duration: 1500
+
+  # Test 2: Go back to valid page
+  - action: navigate
+    url: "https://staging.jahongir-app.uz/properties"
+    description: "Navigate to valid properties page"
+
+  - action: wait
+    duration: 2000
+
+  - action: screenshot
+    description: "Back to valid page"
+
+  # Test 3: Test clicking non-existent element (should fail gracefully)
+  - action: click
+    selector: "#this-element-does-not-exist-at-all"
+    description: "Try to click non-existent element"
+    optional: true
+
+  - action: screenshot
+    description: "After attempting to click non-existent element"
+
+  # Test 4: Test rapid filter changes (stress test)
+  - action: click
+    selector: "button:has-text('Снять')"
+    description: "Click Rent tab"
+
+  - action: wait
+    duration: 500
+
+  - action: click
+    selector: "button:has-text('Посуточно')"
+    description: "Click Daily tab"
+
+  - action: wait
+    duration: 500
+
+  - action: click
+    selector: "button:has-text('Купить')"
+    description: "Click Buy tab"
+
+  - action: wait
+    duration: 500
+
+  - action: screenshot
+    description: "After rapid filter changes"
+
+  # Test 5: Type special characters in search
+  - action: type
+    selector: "input[placeholder*='Адрес']"
+    value: "<script>alert('test')</script>"
+    description: "Test XSS protection in search"
+
+  - action: screenshot
+    description: "After typing special characters"
+
+  - action: wait
+    duration: 1000
+
+  # Final check
+  - action: verify
+    expectations:
+      - type: element_visible
+        selector: "body"
+        description: "Page should still be functional"
